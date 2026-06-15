@@ -94,7 +94,7 @@ function App() {
                 >
                   <use href="/icons.svg#x-icon"></use>
                 </svg>
-                X.com
+                shitty twitter
               </a>
             </li>
             <li>
