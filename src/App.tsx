@@ -1,140 +1,128 @@
-import hopesCornerLogo from './assets/Hopes_Corner_Logo_Green.png'
 import './App.css'
+import { useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
+
+// Define the shape of a shift object
+interface Shift {
+  id: number
+  role: string
+  time: string
+  location: string
+}
+
+// Placeholder database of volunteering shifts
+const SHIFTS_DB: Shift[] = [
+  { id: 1, role: 'Food Server', time: 'Sat, Jun 22 · 9:00 AM - 1:00 PM', location: 'Community Kitchen' },
+  { id: 2, role: 'Event Setup', time: 'Sat, Jun 22 · 2:00 PM - 6:00 PM', location: 'Town Hall' },
+  { id: 3, role: 'Cleanup Crew', time: 'Sun, Jun 23 · 10:00 AM - 2:00 PM', location: 'Park Cleanup' },
+  { id: 4, role: 'Registration Desk', time: 'Sun, Jun 23 · 3:00 PM - 7:00 PM', location: 'Volunteer Center' },
+]
 
 function App() {
+  const [email, setEmail] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [shifts, setShifts] = useState<Shift[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setSubmitted(true)
+    setEmail('')
+    setFirstName('')
+    await fetchShifts()
+  }
+
+  const fetchShifts = async () => {
+    setLoading(true)
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      // In a real app, this would be an API call
+      setShifts([...SHIFTS_DB])
+    } catch (error) {
+      console.error('Failed to fetch shifts:', error)
+      setShifts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefresh = async () => {
+    await fetchShifts()
+  }
+
   return (
-    <>
-      <header className="navbar">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <img src={hopesCornerLogo} alt="Hope's Corner Logo" />
-          </div>
-          <nav className="nav-tabs">
-            <a href="#" className="nav-tab active">Home</a>
-            <a href="#" className="nav-tab">Donate</a>
-            <a href="#" className="nav-tab">Volunteer</a>
-            <a href="#" className="nav-tab">Learn</a>
-            <a href="#" className="nav-tab">About</a>
-            <a href="#" className="nav-tab">Community</a>
-            <a href="#" className="nav-tab">News</a>
-            <a href="#" className="nav-tab">Contact</a>
-          </nav>
-        </div>
+    <div className="App">
+      <header className="App-header">
+        <h1>Volunteer Shift Manager</h1>
+        <p>
+          Thank you for your interest in Hope's Corner!
+          New volunteers: Please enter your name and email below to complete an application and waiver. Once submitted, you can view and sign up for shifts. Please review age and physical requirements for each role, sign-ups may be removed if requirements aren’t met.
+          Returning volunteers: Please enter your name and email below to sign up for shifts or view your scheduled shifts.
+        </p>
       </header>
 
-      <main className="main-content">
-        <section className="hero-section">
-          <div className="image-wrapper">
-            <img src={new URL('./assets/Website+photo+1.jpeg', import.meta.url).href} alt="Hope's Corner community" className="hero-image" onError={(e) => { (e.target as HTMLImageElement).src = new URL('./assets/Website_photo_1.jpg', import.meta.url).href }} />
-          </div>
-          <div className="hero-text-box">
-            <p className="intro-text">
-              Hope’s Corner meets the needs of our community by providing free nutritious meals and warm showers to anyone in need. We believe in one inclusive community that cares for all of its people.
-            </p>
-          </div>
-        </section>
-
-        <section className="services-section">
-          <h2>Services</h2>
-          <div className="services-grid">
-            <div className="service-card">
-              <h3>Free Hot Breakfast & Bag Lunches</h3>
-              <p>Served every Monday 8am-9am, Wednesday 8am-9am and Saturday 8 am-10 am.</p>
+      <main>
+        {!submitted ? (
+          <form onSubmit={handleSubmit} className="sign-in-form">
+            <h2>Sign In</h2>
+            <label>
+              Email:
+              <input
+                type="email"
+                value={email}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              First Name:
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit">Submit</button>
+          </form>
+        ) : (
+          <>
+            <div className="success-message">
+              <p>Thank you, {firstName}! Here are the available volunteering opportunities:</p>
             </div>
-            <div className="service-card">
-              <h3>Free Shower & Laundry Program</h3>
-              <p>Operating hours are Monday 8:30am – noon, Wednesday 8:30 am-noon and Saturday 8:30 am-2pm.</p>
-            </div>
-          </div>
-        </section>
 
-        <section className="location-section">
-          <h2>Where to Find Us</h2>
-          <p className="location-text">748 Mercy Street in downtown Mountain View. We are at the corner of Hope and Mercy Streets, one block from Castro Street</p>
-          <div className="section-barrier"></div>
-          <div className="image-wrapper">
-            <img src={new URL('./assets/Website+photo+2+(1).jpeg', import.meta.url).href} alt="Location Map" className="map-image" onError={(e) => { (e.target as HTMLImageElement).src = new URL('./assets/Website_photo_2_(1).jpg', import.meta.url).href }} />
-          </div>
-        </section>
-
-        <section className="thank-you-section">
-          <p>We couldn’t serve our community without our dedicated volunteers and generous donors. You are the true heroes. Thank you for being part of our shared mission.</p>
-          <div className="action-buttons">
-            <a href="#" className="btn btn-primary">Volunteer</a>
-            <a href="https://give-usa.keela.co/general-donations20" target="_blank" rel="noreferrer" className="btn btn-secondary">Donate</a>
-          </div>
-        </section>
-
-        <section className="info-cards-section">
-          <div className="info-card">
-            <div className="card-image-box">
-              <img src={new URL('./assets/Donation+photo.jpeg', import.meta.url).href} alt="Donate" onError={(e) => { (e.target as HTMLImageElement).src = new URL('./assets/Donation_photo.jpg', import.meta.url).href }} />
-            </div>
-            <h3>Donate</h3>
-            <p>We are a tax-exempt nonprofit supported by donations and grants from individuals and organizations.</p>
-            <a href="https://www.hopes-corner.org/donate" target="_blank" rel="noreferrer" className="learn-more-link">Learn more &gt;&gt;</a>
-          </div>
-
-          <div className="info-card">
-            <div className="card-image-box">
-              <img src={new URL('./assets/Website+photo+2+(1).jpeg', import.meta.url).href} alt="Volunteer" onError={(e) => { (e.target as HTMLImageElement).src = new URL('./assets/Website_photo_2_(1).jpg', import.meta.url).href }} />
-            </div>
-            <h3>Volunteer</h3>
-            <p>Explore our various volunteer opportunities and guidelines for volunteering with Hope’s Corner.</p>
-            <a href="https://www.hopes-corner.org/information-volunteers" target="_blank" rel="noreferrer" className="learn-more-link">Learn more &gt;&gt;</a>
-          </div>
-
-          <div className="info-card">
-            <div className="card-image-box">
-              <img src={new URL('./assets/home-learn.png', import.meta.url).href} alt="Learn" />
-            </div>
-            <h3>Learn</h3>
-            <p>Read about our mission, vision, and values, in addition to learning about who we serve and the services we offer.</p>
-            <a href="https://www.hopes-corner.org/about" target="_blank" rel="noreferrer" className="learn-more-link">Learn more &gt;&gt;</a>
-          </div>
-        </section>
-
-        <section className="newsletter-section">
-          <div className="newsletter-box">
-            <h3>Subscribe to our Newsletter</h3>
-            <p>Stay up to date with news, events, and community impact updates from Hope's Corner.</p>
-            <div className="newsletter-form-placeholder">
-              <input type="email" placeholder="Your email address" disabled />
-              <button type="button" className="btn-subscribe" disabled>Subscribe</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="badges-section">
-          <img src={new URL('./assets/2024-top-rated-awards-badge-hi-res.png', import.meta.url).href} alt="2024 Top Rated Awards Badge" className="award-badge" />
-          <img src={new URL('./assets/Four-Star+Rating+Badge+-+Full+Color.png', import.meta.url).href} alt="Four Star Rating Badge" className="award-badge" />
-          <img src={new URL('./assets/image_826ea5.png', import.meta.url).href} alt="Guidestar Platinum Transparency Badge" className="award-badge" />
-        </section>
+            {loading ? (
+              <p className="loading">Loading opportunities...</p>
+            ) : (
+              <>
+                {shifts.length > 0 ? (
+                  <>
+                    <button onClick={handleRefresh} className="refresh-button">
+                      Refresh Opportunities
+                    </button>
+                    <ul className="shifts-list">
+                      {shifts.map((shift: Shift) => (
+                        <li key={shift.id} className="shift-item">
+                          <div className="shift-info">
+                            <strong>{shift.role}</strong>
+                            <span className="shift-time">{shift.time}</span>
+                          </div>
+                          <div className="shift-location">📍 {shift.location}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="no-shifts">No volunteering opportunities available at the moment.</p>
+                )}
+              </>
+            )}
+          </>
+        )}
       </main>
-
-      <footer className="footer">
-        <div className="social-links-container">
-          <ul className="social-links-list">
-            <li>
-              <a href="https://www.linkedin.com/company/hopes-corner-org/posts/?feedView=all" target="_blank" rel="noreferrer">
-                LinkedIn
-              </a>
-            </li>
-            <li>
-              <a href="https://www.instagram.com/hopescorner_mv" target="_blank" rel="noreferrer">
-                Instagram
-              </a>
-            </li>
-            <li>
-              <a href="https://www.facebook.com/hopescornermv" target="_blank" rel="noreferrer">
-                Facebook
-              </a>
-            </li>
-          </ul>
-        </div>
-        <p>&copy; 2026 Hope's Corner All Rights Reserved.</p>
-      </footer>
-    </>
+    </div>
   )
 }
 
