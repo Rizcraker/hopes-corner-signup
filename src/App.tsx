@@ -1,6 +1,12 @@
 import './App.css'
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/rest\/v1\/.*$/, '') || import.meta.env.VITE_SUPABASE_URL || ''
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Define the shape of a shift object
 interface Shift {
@@ -21,16 +27,59 @@ const SHIFTS_DB: Shift[] = [
 function App() {
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
+  const [password, setPassword] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(false)
+  const [signupLoading, setSignupLoading] = useState(false)
+  const [signupError, setSignupError] = useState<string | null>(null)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
-    setEmail('')
-    setFirstName('')
-    await fetchShifts()
+    setSignupError(null)
+    setSignupLoading(true)
+
+    try {
+      // Sign up user with Supabase Auth
+      const { error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            first_name: firstName
+          }
+        }
+      })
+
+      if (error) {
+        throw error
+      }
+
+      // Optional: Insert additional user data into a public.users table
+      // Uncomment and adjust if you have a users table set up
+      /*
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData.user) {
+        await supabase.from('users').insert({
+          id: userData.user.id,
+          email: email,
+          first_name: firstName,
+          created_at: new Date().toISOString()
+        })
+      }
+      */
+
+      setSubmitted(true)
+      setEmail('')
+      setFirstName('')
+      setPassword('')
+      await fetchShifts()
+    } catch (error: any) {
+      console.error('Signup error:', error)
+      setSignupError(error.message || 'An error occurred during signup')
+    } finally {
+      setSignupLoading(false)
+    }
   }
 
   const fetchShifts = async () => {
@@ -58,7 +107,7 @@ function App() {
         <h1>Volunteer Shift Manager</h1>
         <p>
           Thank you for your interest in Hope's Corner!
-          New volunteers: Please enter your name and email below to complete an application and waiver. Once submitted, you can view and sign up for shifts. Please review age and physical requirements for each role, sign-ups may be removed if requirements aren’t met.
+          New volunteers: Please enter your name, email, and password below to complete an application and waiver. Once submitted, you can view and sign up for shifts. Please review age and physical requirements for each role, sign-ups may be removed if requirements aren’t met.
           Returning volunteers: Please enter your name and email below to sign up for shifts or view your scheduled shifts.
         </p>
       </header>
@@ -66,7 +115,7 @@ function App() {
       <main>
         {!submitted ? (
           <form onSubmit={handleSubmit} className="sign-in-form">
-            <h2>Sign In</h2>
+            <h2>Sign Up</h2>
             <label>
               Email:
               <input
@@ -85,7 +134,20 @@ function App() {
                 required
               />
             </label>
-            <button type="submit">Submit</button>
+            <label>
+              Password:
+              <input
+                type="password"
+                value={password}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </label>
+            {signupError && <p className="error-message">{signupError}</p>}
+            <button type="submit" disabled={signupLoading}>
+              {signupLoading ? 'Signing up...' : 'Submit'}
+            </button>
           </form>
         ) : (
           <>
