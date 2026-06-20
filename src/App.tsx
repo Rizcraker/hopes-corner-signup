@@ -1,187 +1,312 @@
 import './App.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import logoGreen from './assets/Hopes_Corner_Logo_Green.png'
 
-// Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/rest\/v1\/.*$/, '') || import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Define the shape of a shift object
 interface Shift {
   id: number
   role: string
   time: string
   location: string
+  requirements: string
+  spotsLeft: number
 }
 
-// Placeholder database of volunteering shifts
 const SHIFTS_DB: Shift[] = [
-  { id: 1, role: 'Food Server', time: 'Sat, Jun 22 · 9:00 AM - 1:00 PM', location: 'Community Kitchen' },
-  { id: 2, role: 'Event Setup', time: 'Sat, Jun 22 · 2:00 PM - 6:00 PM', location: 'Town Hall' },
-  { id: 3, role: 'Cleanup Crew', time: 'Sun, Jun 23 · 10:00 AM - 2:00 PM', location: 'Park Cleanup' },
-  { id: 4, role: 'Registration Desk', time: 'Sun, Jun 23 · 3:00 PM - 7:00 PM', location: 'Volunteer Center' },
+  { 
+    id: 1, 
+    role: 'Breakfast Food Server', 
+    time: 'Sat, Jun 22 · 7:00 AM - 10:00 AM', 
+    location: 'Hope\'s Corner Kitchen',
+    requirements: 'Age 16+, ability to stand for 3 hours, friendly attitude.',
+    spotsLeft: 4
+  },
+  { 
+    id: 2, 
+    role: 'Lunch Prep & Packing', 
+    time: 'Sat, Jun 22 · 10:15 AM - 1:30 PM', 
+    location: 'Hope\'s Corner Kitchen',
+    requirements: 'Age 16+, basic kitchen safety knowledge preferred.',
+    spotsLeft: 2
+  },
+  { 
+    id: 3, 
+    role: 'Shower Program Monitor', 
+    time: 'Sat, Jun 22 · 8:00 AM - 12:00 PM', 
+    location: 'Shower Facilities',
+    requirements: 'Age 18+, clear communication skills, background check required.',
+    spotsLeft: 1
+  },
+  { 
+    id: 4, 
+    role: 'Site Cleanup & Breakdown', 
+    time: 'Sat, Jun 22 · 1:00 PM - 3:00 PM', 
+    location: 'Main Hall / Kitchen',
+    requirements: 'Age 14+ (with adult), ability to lift up to 25 lbs.',
+    spotsLeft: 5
+  },
 ]
 
 function App() {
+  const [isSignUp, setIsSignUp] = useState(true)
+  const [userSession, setUserSession] = useState<any>(null)
+  
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [password, setPassword] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  // Password visible toggle track state
+  const [showPassword, setShowPassword] = useState(false)
+  
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(false)
-  const [signupLoading, setSignupLoading] = useState(false)
-  const [signupError, setSignupError] = useState<string | null>(null)
+  const [authLoading, setAuthLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [infoMessage, setInfoMessage] = useState<string | null>(null)
 
-  const handleSubmit = async (e: FormEvent) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserSession(session)
+      if (session) fetchShifts()
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserSession(session)
+      if (session) fetchShifts()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleAuthSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setSignupError(null)
-    setSignupLoading(true)
+    setErrorMessage(null)
+    setInfoMessage(null)
+    setAuthLoading(true)
 
     try {
-      // Sign up user with Supabase Auth
-      const { error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            first_name: firstName
-          }
-        }
-      })
-
-      if (error) {
-        throw error
-      }
-
-      // Optional: Insert additional user data into a public.users table
-      // Uncomment and adjust if you have a users table set up
-      /*
-      const { data: userData } = await supabase.auth.getUser()
-      if (userData.user) {
-        await supabase.from('users').insert({
-          id: userData.user.id,
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
           email: email,
-          first_name: firstName,
-          created_at: new Date().toISOString()
+          password: password,
+          options: {
+            data: { first_name: firstName },
+            emailRedirectTo: window.location.origin 
+          }
         })
-      }
-      */
+        if (error) throw error
 
-      setSubmitted(true)
+        if (data.user && data.session === null) {
+          setInfoMessage('Registration initiated! Please check your inbox for a verification email to activate your account before logging in.')
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password,
+        })
+        if (error) throw error
+      }
+      
       setEmail('')
       setFirstName('')
       setPassword('')
-      await fetchShifts()
     } catch (error: any) {
-      console.error('Signup error:', error)
-      setSignupError(error.message || 'An error occurred during signup')
+      console.error('Auth error:', error)
+      if (error.message?.includes('rate limit')) {
+        setErrorMessage('Too many attempts. Please wait a few minutes before trying again.')
+      } else {
+        setErrorMessage(error.message || 'An operational error occurred.')
+      }
     } finally {
-      setSignupLoading(false)
+      setAuthLoading(false)
     }
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUserSession(null)
+    setShifts([])
+    setInfoMessage(null)
   }
 
   const fetchShifts = async () => {
     setLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800))
-      // In a real app, this would be an API call
+      await new Promise(resolve => setTimeout(resolve, 500))
       setShifts([...SHIFTS_DB])
     } catch (error) {
-      console.error('Failed to fetch shifts:', error)
-      setShifts([])
+      console.error('Error fetching shifts:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRefresh = async () => {
-    await fetchShifts()
+  const getUserName = () => {
+    return userSession?.user?.user_metadata?.first_name || userSession?.user?.email || 'Volunteer'
   }
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Volunteer Shift Manager</h1>
-        <p>
-          Thank you for your interest in Hope's Corner!
-          New volunteers: Please enter your name, email, and password below to complete an application and waiver. Once submitted, you can view and sign up for shifts. Please review age and physical requirements for each role, sign-ups may be removed if requirements aren’t met.
-          Returning volunteers: Please enter your name and email below to sign up for shifts or view your scheduled shifts.
-        </p>
+        <div className="header-container">
+          {/* Enhanced raw logo presentation layout without white background box */}
+          <div className="logo-wrapper">
+            <img 
+              src={logoGreen} 
+              alt="Hope's Corner Logo" 
+              className="app-logo"
+            />
+          </div>
+          <div className="header-text">
+            <h1>Hope's Corner Volunteering Hub</h1>
+            <p className="subtitle">Sharing hope, one meal and one shower at a time.</p>
+          </div>
+        </div>
       </header>
 
-      <main>
-        {!submitted ? (
-          <form onSubmit={handleSubmit} className="sign-in-form">
-            <h2>Sign Up</h2>
-            <label>
-              Email:
-              <input
-                type="email"
-                value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              First Name:
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Password:
-              <input
-                type="password"
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </label>
-            {signupError && <p className="error-message">{signupError}</p>}
-            <button type="submit" disabled={signupLoading}>
-              {signupLoading ? 'Signing up...' : 'Submit'}
-            </button>
-          </form>
-        ) : (
-          <>
-            <div className="success-message">
-              <p>Thank you, {firstName}! Here are the available volunteering opportunities:</p>
+      <main className="main-content">
+        {!userSession ? (
+          <div className="auth-card">
+            <div className="auth-toggle-tabs">
+              <button 
+                type="button" 
+                className={`tab-btn ${isSignUp ? 'active' : ''}`} 
+                onClick={() => { setIsSignUp(true); setErrorMessage(null); setInfoMessage(null); }}
+              >
+                New Volunteer
+              </button>
+              <button 
+                type="button" 
+                className={`tab-btn ${!isSignUp ? 'active' : ''}`} 
+                onClick={() => { setIsSignUp(false); setErrorMessage(null); setInfoMessage(null); }}
+              >
+                Returning Volunteer
+              </button>
             </div>
 
-            {loading ? (
-              <p className="loading">Loading opportunities...</p>
-            ) : (
-              <>
-                {shifts.length > 0 ? (
-                  <>
-                    <button onClick={handleRefresh} className="refresh-button">
-                      Refresh Opportunities
-                    </button>
-                    <ul className="shifts-list">
-                      {shifts.map((shift: Shift) => (
-                        <li key={shift.id} className="shift-item">
-                          <div className="shift-info">
-                            <strong>{shift.role}</strong>
-                            <span className="shift-time">{shift.time}</span>
-                          </div>
-                          <div className="shift-location">📍 {shift.location}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  <p className="no-shifts">No volunteering opportunities available at the moment.</p>
-                )}
-              </>
-            )}
-          </>
+            <form onSubmit={handleAuthSubmit} className="auth-form">
+              <h2>{isSignUp ? 'Create an Account' : 'Welcome Back'}</h2>
+              <p className="form-instructions">
+                {isSignUp 
+                  ? 'Sign up to view, manage, and claim active volunteering shifts.' 
+                  : 'Log in with your email and password to coordinate your current schedule.'}
+              </p>
+
+              {isSignUp && (
+                <div className="form-group">
+                  <label htmlFor="firstName">First Name</label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+                    placeholder="Enter your first name"
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <div className="password-input-wrapper">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                  <button 
+                    type="button" 
+                    className="password-toggle-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? '👁️ Hide' : '👁️ Show'}
+                  </button>
+                </div>
+              </div>
+
+              {errorMessage && <div className="error-banner">{errorMessage}</div>}
+              {infoMessage && <div className="info-banner">{infoMessage}</div>}
+
+              <button type="submit" className="btn-primary" disabled={authLoading}>
+                {authLoading ? 'Processing...' : (isSignUp ? 'Register & Apply' : 'Sign In')}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="dashboard-container">
+            <div className="welcome-banner">
+              <div>
+                <h2>Welcome back, {getUserName()}!</h2>
+                <p>Thank you for contributing your time and energy to Hope's Corner.</p>
+              </div>
+              <button onClick={handleSignOut} className="btn-secondary logout-btn">
+                Log Out
+              </button>
+            </div>
+
+            <div className="shifts-section">
+              <div className="section-header">
+                <h3>Available Volunteering Shifts</h3>
+                <button onClick={fetchShifts} className="btn-refresh" disabled={loading}>
+                  {loading ? 'Refreshing...' : '🔄 Refresh List'}
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="loading-spinner">Loading shift schedule matrix...</div>
+              ) : shifts.length > 0 ? (
+                <div className="shifts-grid">
+                  {shifts.map((shift: Shift) => (
+                    <div key={shift.id} className="shift-card">
+                      <div className="shift-card-header">
+                        <h4>{shift.role}</h4>
+                        <span className="spots-badge">
+                          {shift.spotsLeft} {shift.spotsLeft === 1 ? 'spot' : 'spots'} left
+                        </span>
+                      </div>
+                      <div className="shift-card-body">
+                        <p className="shift-detail"><strong>📅 Time:</strong> {shift.time}</p>
+                        <p className="shift-detail"><strong>📍 Location:</strong> {shift.location}</p>
+                        <div className="shift-requirements">
+                          <strong>⚠️ Requirements:</strong> {shift.requirements}
+                        </div>
+                      </div>
+                      <div className="shift-card-footer">
+                        <button 
+                          className="btn-accent" 
+                          onClick={() => alert(`Successfully requested to join the "${shift.role}" shift!`)}
+                        >
+                          Claim This Shift
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-shifts">No shifts available right now. Check back shortly!</p>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>
