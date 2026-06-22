@@ -427,4 +427,24 @@ body {
 .active-shifts-list li {
   margin-bottom: 4px;
   color: var(--hc-text-main);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Remove shift button */
+.remove-shift-btn {
+  background: var(--hc-danger);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.remove-shift-btn:hover {
+  background: #e74c3c;
+  color: white;
 }

@@ -19,34 +19,34 @@ interface Shift {
 }
 
 const SHIFTS_DB: Shift[] = [
-  {
-    id: 1,
-    role: 'Breakfast Food Server',
-    time: 'Sat, Jun 22 · 7:00 AM - 10:00 AM',
+  { 
+    id: 1, 
+    role: 'Breakfast Food Server', 
+    time: 'Sat, Jun 22 · 7:00 AM - 10:00 AM', 
     location: 'Hope\'s Corner Kitchen',
     requirements: 'Age 16+, ability to stand for 3 hours, friendly attitude.',
     spotsLeft: 4
   },
-  {
-    id: 2,
-    role: 'Lunch Prep & Packing',
-    time: 'Sat, Jun 22 · 10:15 AM - 1:30 PM',
+  { 
+    id: 2, 
+    role: 'Lunch Prep & Packing', 
+    time: 'Sat, Jun 22 · 10:15 AM - 1:30 PM', 
     location: 'Hope\'s Corner Kitchen',
     requirements: 'Age 16+, basic kitchen safety knowledge preferred.',
     spotsLeft: 2
   },
-  {
-    id: 3,
-    role: 'Shower Program Monitor',
-    time: 'Sat, Jun 22 · 8:00 AM - 12:00 PM',
+  { 
+    id: 3, 
+    role: 'Shower Program Monitor', 
+    time: 'Sat, Jun 22 · 8:00 AM - 12:00 PM', 
     location: 'Shower Facilities',
     requirements: 'Age 18+, clear communication skills, background check required.',
     spotsLeft: 1
   },
-  {
-    id: 4,
-    role: 'Site Cleanup & Breakdown',
-    time: 'Sat, Jun 22 · 1:00 PM - 3:00 PM',
+  { 
+    id: 4, 
+    role: 'Site Cleanup & Breakdown', 
+    time: 'Sat, Jun 22 · 1:00 PM - 3:00 PM', 
     location: 'Main Hall / Kitchen',
     requirements: 'Age 14+ (with adult), ability to lift up to 25 lbs.',
     spotsLeft: 5
@@ -66,7 +66,7 @@ function App() {
   const [firstName, setFirstName] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-
+  
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
@@ -74,7 +74,53 @@ function App() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null)
 
   // User info data from user_info supabase tracking matrix
-  const [userInfo, setUserInfo] = useState<{ hours_volunteered: number; active_shifts: string[] } | null>(null)
+  const [userInfo, setUserInfo] = useState<{
+    hours_volunteered: number;
+    active_shifts: string[];
+    first_name: string;
+    last_name: string;
+    birthday: string | null;
+    phone_number: string;
+    emergency_contact_name: string;
+    emergency_contact_phone: string;
+    employer: string;
+    street_address: string;
+    city: string;
+    zip_code: string;
+    organization: string;
+  } | null>(null)
+
+  // Registration flow state
+  const [registrationStep, setRegistrationStep] = useState(1);
+
+  // profile fields
+  const [lastName, setLastName] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [employer, setEmployer] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [organization, setOrganization] = useState('');
+  const [customGroup, setCustomGroup] = useState('');
+  const [groupOptions, setGroupOptions] = useState<string[]>(["Hope's Corner", "Local Church", "Community Group", "Other"]);
+
+  const resetProfileFields = () => {
+    setFirstName('');
+    setLastName('');
+    setBirthday('');
+    setPhoneNumber('');
+    setEmergencyContactName('');
+    setEmergencyContactPhone('');
+    setEmployer('');
+    setStreetAddress('');
+    setCity('');
+    setZipCode('');
+    setOrganization('');
+    setCustomGroup('');
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -104,19 +150,44 @@ function App() {
     try {
       const { data, error } = await supabase
         .from('user_info')
-        .select('hours_volunteered, active_shifts')
+        .select('hours_volunteered, active_shifts, first_name, last_name, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, organization')
         .eq('user_id', session.user.id)
         .single()
 
       if (error) {
         // If no record exists, create one with default values
-        if (error.code === 'PGRST116') { 
+        if (error.code === 'PGRST116') {
           await supabase.from('user_info').insert({
             user_id: session.user.id,
             hours_volunteered: 0,
-            active_shifts: [] 
+            active_shifts: [],
+            first_name: '',
+            last_name: '',
+            birthday: null,
+            phone_number: '',
+            emergency_contact_name: '',
+            emergency_contact_phone: '',
+            employer: '',
+            street_address: '',
+            city: '',
+            zip_code: '',
+            organization: ''
           })
-          setUserInfo({ hours_volunteered: 0, active_shifts: [] })
+          setUserInfo({
+            hours_volunteered: 0,
+            active_shifts: [],
+            first_name: '',
+            last_name: '',
+            birthday: null,
+            phone_number: '',
+            emergency_contact_name: '',
+            emergency_contact_phone: '',
+            employer: '',
+            street_address: '',
+            city: '',
+            zip_code: '',
+            organization: ''
+          })
         } else {
           throw error
         }
@@ -129,12 +200,37 @@ function App() {
 
         setUserInfo({
           hours_volunteered: data.hours_volunteered,
-          active_shifts: parsedActiveShifts
+          active_shifts: parsedActiveShifts,
+          first_name: data.first_name ?? '',
+          last_name: data.last_name ?? '',
+          birthday: data.birthday ?? null,
+          phone_number: data.phone_number ?? '',
+          emergency_contact_name: data.emergency_contact_name ?? '',
+          emergency_contact_phone: data.emergency_contact_phone ?? '',
+          employer: data.employer ?? '',
+          street_address: data.street_address ?? '',
+          city: data.city ?? '',
+          zip_code: data.zip_code ?? '',
+          organization: data.organization ?? ''
         })
       }
     } catch (error) {
       console.error('Error fetching user info:', error)
-      setUserInfo({ hours_volunteered: 0, active_shifts: [] }) 
+      setUserInfo({
+        hours_volunteered: 0,
+        active_shifts: [],
+        first_name: '',
+        last_name: '',
+        birthday: null,
+        phone_number: '',
+        emergency_contact_name: '',
+        emergency_contact_phone: '',
+        employer: '',
+        street_address: '',
+        city: '',
+        zip_code: '',
+        organization: ''
+      })
     }
   }
 
@@ -143,10 +239,11 @@ function App() {
     if (isBypassActive) {
       const shiftDescription = `${shift.role} - ${shift.time}`
       setUserInfo(prev => {
-        const currentShifts = prev?.active_shifts || []
+        if (!prev) return null
+        const currentShifts = prev.active_shifts
         if (currentShifts.includes(shiftDescription)) return prev
         return {
-          hours_volunteered: prev?.hours_volunteered || 0,
+          ...prev,
           active_shifts: [...currentShifts, shiftDescription]
         }
       })
@@ -182,6 +279,41 @@ function App() {
     }
   }
 
+  const removeActiveShift = async (shiftDescription: string) => {
+    // If inside Developer bypass mode, mimic the state transition gracefully
+    if (isBypassActive) {
+      setUserInfo(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          active_shifts: prev.active_shifts.filter(shift => shift !== shiftDescription)
+        }
+      })
+      return
+    }
+
+    if (!userSession?.user || !userInfo) return
+    try {
+      setErrorMessage(null)
+      const newActiveShifts = userInfo.active_shifts.filter(shift => shift !== shiftDescription)
+
+      const { error } = await supabase
+        .from('user_info')
+        .update({ active_shifts: newActiveShifts })
+        .eq('user_id', userSession.user.id)
+
+      if (error) throw error
+
+      setUserInfo(prev => {
+        if (!prev) return null
+        return { ...prev, active_shifts: newActiveShifts }
+      })
+    } catch (error) {
+      console.error('Error removing active shift:', error)
+      setErrorMessage('Failed to remove shift. Please try again.')
+    }
+  }
+
   const handleAuthSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setErrorMessage(null)
@@ -190,25 +322,79 @@ function App() {
 
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { first_name: firstName },
-            emailRedirectTo: window.location.origin
+        if (registrationStep === 1) {
+          // Move to next step (profile info)
+          setRegistrationStep(2)
+        } else if (registrationStep === 2) {
+          // Perform sign up with profile data
+          const finalOrganization = organization === 'Other' ? customGroup : organization;
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                first_name: firstName,
+                last_name: lastName,
+                birthday: birthday,
+                phone_number: phoneNumber,
+                emergency_contact_name: emergencyContactName,
+                emergency_contact_phone: emergencyContactPhone,
+                employer: employer,
+                street_address: streetAddress,
+                city: city,
+                zip_code: zipCode,
+                organization: finalOrganization
+              },
+              emailRedirectTo: window.location.origin
+            }
+          })
+          if (error) throw error
+          if (data.user) {
+            // Create corresponding row in user_info table
+            await supabase.from('user_info').insert({
+              user_id: data.user.id,
+              hours_volunteered: 0,
+              active_shifts: [],
+              first_name: firstName,
+              last_name: lastName,
+              birthday: birthday || null,
+              phone_number: phoneNumber,
+              emergency_contact_name: emergencyContactName,
+              emergency_contact_phone: emergencyContactPhone,
+              employer: employer,
+              street_address: streetAddress,
+              city: city,
+              zip_code: zipCode,
+              organization: finalOrganization
+            })
+            setInfoMessage('Registration successful! Please check your email for verification.')
+            // Reset form for next registration
+            setEmail('')
+            setPassword('')
+            setFirstName('')
+            setLastName('')
+            setBirthday('')
+            setPhoneNumber('')
+            setEmergencyContactName('')
+            setEmergencyContactPhone('')
+            setEmployer('')
+            setStreetAddress('')
+            setCity('')
+            setZipCode('')
+            setOrganization('')
+            setCustomGroup('')
+            setRegistrationStep(1)
           }
-        })
-        if (error) throw error
-        if (data.user && data.session === null) {
-          setInfoMessage('Registration initiated! Please check your inbox for a verification email.')
+          // If email verification required, show message (already covered by data.session === null)
+          if (data.user && data.session === null) {
+            setInfoMessage('Registration initiated! Please check your inbox for a verification email.')
+          }
         }
       } else {
+        // Login flow unchanged
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       }
-      setEmail('')
-      setFirstName('')
-      setPassword('')
     } catch (error: any) {
       setErrorMessage(error.message || 'An operational error occurred.')
     } finally {
@@ -223,6 +409,8 @@ function App() {
     setShifts([])
     setUserInfo(null)
     setInfoMessage(null)
+    setRegistrationStep(1)
+    resetProfileFields()
   }
 
   const fetchShifts = async () => {
@@ -241,7 +429,21 @@ function App() {
     if (isBypassActive) {
       fetchShifts()
       if (!userInfo) {
-        setUserInfo({ hours_volunteered: 8, active_shifts: [] })
+        setUserInfo({
+          hours_volunteered: 8,
+          active_shifts: [],
+          first_name: '',
+          last_name: '',
+          birthday: null,
+          phone_number: '',
+          emergency_contact_name: '',
+          emergency_contact_phone: '',
+          employer: '',
+          street_address: '',
+          city: '',
+          zip_code: '',
+          organization: ''
+        })
       }
     }
   }, [isBypassActive])
@@ -356,10 +558,10 @@ function App() {
                 </div>
 
                 <div className="auth-toggle-tabs">
-                  <button type="button" className={`tab-btn ${isSignUp ? 'active' : ''}`} onClick={() => { setIsSignUp(true); setErrorMessage(null); setInfoMessage(null); }}>
+                  <button type="button" className={`tab-btn ${isSignUp ? 'active' : ''}`} onClick={() => { setIsSignUp(true); setErrorMessage(null); setInfoMessage(null); setRegistrationStep(1); resetProfileFields(); }}>
                     New Volunteer
                   </button>
-                  <button type="button" className={`tab-btn ${!isSignUp ? 'active' : ''}`} onClick={() => { setIsSignUp(false); setErrorMessage(null); setInfoMessage(null); }}>
+                  <button type="button" className={`tab-btn ${!isSignUp ? 'active' : ''}`} onClick={() => { setIsSignUp(false); setErrorMessage(null); setInfoMessage(null); setRegistrationStep(1); resetProfileFields(); }}>
                     Returning Volunteer
                   </button>
                 </div>
@@ -367,25 +569,18 @@ function App() {
                 <form onSubmit={handleAuthSubmit} className="auth-form">
                   <h3>{isSignUp ? 'Create an Account' : 'Welcome Back'}</h3>
                   <p className="form-instructions">
-                    {isSignUp 
-                      ? 'Sign up to view, manage, and claim active volunteering shifts.' 
+                    {isSignUp
+                      ? 'Sign up to view, manage, and claim active volunteering shifts.'
                       : 'Log in with your email and password to coordinate your current schedule.'}
                   </p>
-                  
-                  {isSignUp && (
-                    <div className="form-group">
-                      <label htmlFor="firstName">First Name</label>
-                      <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-                    </div>
-                  )}
 
+                  {/* Always show email and password */}
                   <div className="form-group">
-                    <label htmlFor="email">Email Address</label>
+                    <label htmlFor="email">Email Address *</label>
                     <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
-
                   <div className="form-group">
-                    <label htmlFor="password">Password</label>
+                    <label htmlFor="password">Password *</label>
                     <div className="password-input-wrapper">
                       <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                       <button type="button" className="password-toggle-btn" onClick={() => setShowPassword(!showPassword)}>
@@ -394,12 +589,94 @@ function App() {
                     </div>
                   </div>
 
+                  {/* Error and Info messages - always show */}
                   {errorMessage && <div className="error-banner">{errorMessage}</div>}
                   {infoMessage && <div className="info-banner">{infoMessage}</div>}
 
-                  <button type="submit" className="btn-primary" disabled={authLoading}>
-                    {authLoading ? 'Processing...' : (isSignUp ? 'Register' : 'Sign In')}
-                  </button>
+                  {/* Conditional content based on isSignUp and registrationStep */}
+                  {isSignUp ? (
+                    <> 
+                      {registrationStep === 1 && (
+                        <>
+                          <button type="submit" className="btn-primary" disabled={authLoading}>
+                            {authLoading ? 'Processing...' : 'Next'}
+                          </button>
+                        </>
+                      )}
+                      {registrationStep === 2 && (
+                        <>
+                          <div className="form-group">
+                            <label htmlFor="firstName">First Name *</label>
+                            <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="lastName">Last Name *</label>
+                            <input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="birthday">Birthday *</label>
+                            <input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="phoneNumber">Phone Number *</label>
+                            <input id="phoneNumber" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="emergencyContactName">Emergency Contact Name *</label>
+                            <input id="emergencyContactName" type="text" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="emergencyContactPhone">Emergency Contact Phone # *</label>
+                            <input id="emergencyContactPhone" type="tel" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} required />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="employer">Employer</label>
+                            <input id="employer" type="text" value={employer} onChange={(e) => setEmployer(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="streetAddress">Street Address</label>
+                            <input id="streetAddress" type="text" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="city">City</label>
+                            <input id="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="zipCode">Zip Code</label>
+                            <input id="zipCode" type="text" value={zipCode} onChange={(e) => setZipCode(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="organization">Organization/Group</label>
+                            <select id="organization" value={organization} onChange={(e) => setOrganization(e.target.value)} >
+                              <option value="">Select or type</option>
+                              {groupOptions.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="customGroup">Or add your own group</label>
+                            <input id="customGroup" type="text" value={customGroup} onChange={(e) => setCustomGroup(e.target.value)} />
+                            <p style={{fontSize: '0.8rem', color: '#666'}}>If you select "Other" above, you can type your group here.</p>
+                          </div>
+                          <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '1rem'}}>
+                            <button type="button" className="btn-secondary" onClick={() => setRegistrationStep(1)}>
+                              Back
+                            </button>
+                            <button type="submit" className="btn-primary" disabled={authLoading}>
+                              {authLoading ? 'Creating Account...' : 'Register'}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button type="submit" className="btn-primary" disabled={authLoading}>
+                        {authLoading ? 'Signing In...' : 'Sign In'}
+                      </button>
+                    </>
+                  )}
                 </form>
               </div>
             ) : (
@@ -419,8 +696,26 @@ function App() {
                           <div className="active-shifts-list">
                             <h4>Your Active Scheduled Shifts:</h4>
                             <ul>
-                              {userInfo.active_shifts.map((s, idx) => (
-                                <li key={idx}>✅ {s}</li>
+                              {userInfo.active_shifts.map((shift, idx) => (
+                                <li key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span>✅ {shift}</span>
+                                  <button
+                                    onClick={() => removeActiveShift(shift)}
+                                    className="trash-btn"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#ff6b6b',
+                                      cursor: 'pointer',
+                                      fontSize: '1.2rem',
+                                      padding: '0',
+                                      marginLeft: '0.5rem'
+                                    }}
+                                    title="Remove shift"
+                                  >
+                                    ✕
+                                  </button>
+                                </li>
                               ))}
                             </ul>
                           </div>
