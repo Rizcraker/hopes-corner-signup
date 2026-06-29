@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import logoGreen from './assets/Hopes_Corner_Logo_Green.png'
+import sponsorsImg from './assets/hopes-corner-sponsors.png'
+import lentesImg from './assets/lentes-gratis.png'
 
 // Supabase Initialization
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/rest\/v1\/.*$/, '') || import.meta.env.VITE_SUPABASE_URL || ''
@@ -56,6 +58,8 @@ const SHIFTS_DB: Shift[] = [
 function App() {
   // Navigation tabs state
   const [activeTab, setActiveTab] = useState<string>('home')
+  const [communityTab, setCommunityTab] = useState<string>('stories')
+  const [newsTab, setNewsTab] = useState<string>('press')
   
   // Auth & Portal State
   const [isSignUp, setIsSignUp] = useState(true)
@@ -468,8 +472,8 @@ function App() {
             <button onClick={() => setActiveTab('volunteer')} className={`nav-tab ${activeTab === 'volunteer' ? 'active' : ''}`}>Volunteer</button>
             <button onClick={() => setActiveTab('learn')} className={`nav-tab ${activeTab === 'learn' ? 'active' : ''}`}>Learn</button>
             <button onClick={() => setActiveTab('about')} className={`nav-tab ${activeTab === 'about' ? 'active' : ''}`}>About</button>
-            <button className="nav-tab disabled-tab" disabled title="Coming soon">Community</button>
-            <button className="nav-tab disabled-tab" disabled title="Coming soon">News</button>
+            <button onClick={() => setActiveTab('community')} className={`nav-tab ${activeTab === 'community' ? 'active' : ''}`}>Community</button>
+            <button onClick={() => setActiveTab('news')} className={`nav-tab ${activeTab === 'news' ? 'active' : ''}`}>News</button>
             <button onClick={() => setActiveTab('contact')} className={`nav-tab ${activeTab === 'contact' ? 'active' : ''}`}>Contact</button>
           </nav>
         </div>
@@ -976,6 +980,244 @@ function App() {
             <p className="note-text">Thank you for your interest in working at Hope’s Corner. At this time, we do not currently have any paid opportunities available.</p>
           </div>
         )}
+
+        {/* ================= COMMUNITY TAB ================= */}
+        {activeTab === 'community' && (
+          <div className="tab-fade-in text-section">
+            <div className="community-sub-tabs">
+              <button
+                onClick={() => setCommunityTab('stories')}
+                className={`community-sub-btn ${communityTab === 'stories' ? 'active' : ''}`}
+              >Stories</button>
+              <button
+                onClick={() => setCommunityTab('sponsors')}
+                className={`community-sub-btn ${communityTab === 'sponsors' ? 'active' : ''}`}
+              >Sponsors &amp; Partners</button>
+              <button
+                onClick={() => setCommunityTab('resources')}
+                className={`community-sub-btn ${communityTab === 'resources' ? 'active' : ''}`}
+              >Resources</button>
+            </div>
+
+            {communityTab === 'stories' && (
+              <div>
+                <h2>Stories</h2>
+                <p>Real stories from the people who make Hope's Corner what it is — volunteers, guests, and neighbors.</p>
+                <div className="story-card">
+                  <h3>Mikey</h3>
+                  <p>Mikey found his way back to what he lost — and someone who is very dear to him, his mother.</p>
+                  <a href="https://www.hopes-corner.org/lost-and-foundhope-for-a-better-future" target="_blank" rel="noreferrer" className="story-link">Read Mikey's story →</a>
+                </div>
+                <div className="story-card">
+                  <h3>Saint Claire</h3>
+                  <p>To family, friends, and neighbors she's Claire Hubel — a mother, wife, and Mountain View resident. But to the guests who come to Hope's Corner on Thursdays to shower, she's "Saint Claire," one of the most dedicated volunteers Hope's Corner has.</p>
+                  <a href="https://www.hopes-corner.org/saint-claire" target="_blank" rel="noreferrer" className="story-link">Read Saint Claire's story →</a>
+                </div>
+                <div className="story-card">
+                  <h3>Bill and Elsa</h3>
+                  <p>Bill explains how Hope's Corner has provided a safe place to find community as well as a meal and a shower. Video generously provided by KMTV.</p>
+                  <a href="https://youtu.be/EVyqX03VF_U" target="_blank" rel="noreferrer" className="story-link">Watch Bill and Elsa's video →</a>
+                </div>
+                <div className="story-card">
+                  <h3>Susan and Alex Dole</h3>
+                  <p>"How can we have anyone with food insecurity HERE?" — Susan and Alex share what they learned volunteering in downtown Mountain View and why Hope's Corner's mission stayed with them.</p>
+                  <a href="https://www.hopes-corner.org/enlightening-and-inspriring-" target="_blank" rel="noreferrer" className="story-link">Read Susan and Alex's story →</a>
+                </div>
+                <div className="story-card">
+                  <h3>In Remembrance of Edward Lee Hamm</h3>
+                  <p>Edward was a long-time client at Hope's Corner, often arriving with his Stanford Continuation Studies book. Born in Marion, South Carolina, he was an enigma — until we became friends.</p>
+                  <a href="https://www.hopes-corner.org/in-remembrance-of-edward-lee-hamm" target="_blank" rel="noreferrer" className="story-link">Read Marilyn Winkleby's remembrance →</a>
+                </div>
+                <p style={{ marginTop: '30px', color: 'var(--hc-text-muted)', fontSize: '0.95rem' }}>
+                  Want to share your own story as a volunteer or guest? Email us at{' '}
+                  <a href="mailto:info@hopes-corner.org" style={{ color: 'var(--hc-green-primary)' }}>info@hopes-corner.org</a>.
+                </p>
+              </div>
+            )}
+
+            {communityTab === 'sponsors' && (
+              <div>
+                <h2>Sponsors &amp; Partners</h2>
+                <p>Hope's Corner is made possible through the generous support of these organizations and community partners.</p>
+                <img
+                  src={sponsorsImg}
+                  alt="Hope's Corner Sponsors and Partners"
+                  style={{ width: '100%', maxWidth: '760px', height: 'auto', display: 'block', margin: '24px auto', borderRadius: '8px', border: '1px solid var(--hc-border)' }}
+                  onError={(e) => { (e.target as HTMLImageElement).alt = 'Sponsors image unavailable' }}
+                />
+              </div>
+            )}
+
+            {communityTab === 'resources' && (
+              <div>
+                <h2>Resources</h2>
+
+                <div className="program-block">
+                  <h3>City of Mountain View — Homeless Services</h3>
+                  <p>The City collaborates with local agencies, nonprofits, and volunteers to maintain a broad range of support for community members. They also maintain a resource list for low-income and unhoused individuals.</p>
+                  <a href="https://www.mountainview.gov/our-city/departments/city-managers-office/human-services/homeless-services" target="_blank" rel="noreferrer" style={{ color: 'var(--hc-green-primary)', fontWeight: 600 }}>
+                    View City Resources →
+                  </a>
+                </div>
+
+                <div className="program-block">
+                  <h3>The United Effort Organization</h3>
+                  <p>748 Mercy Street, Mountain View · (650) 209-0850</p>
+                  <p>Services include Public Assistance Programs, Resources, Mentors, and phones. Representatives are available at Hope's Corner on Wednesdays 8am–9am and Saturdays 8:30am–10:30am.</p>
+                  <a href="http://theunitedeffort.org" target="_blank" rel="noreferrer" style={{ color: 'var(--hc-green-primary)', fontWeight: 600 }}>
+                    theunitedeffort.org →
+                  </a>
+                  <br /><br />
+                  <a href="https://www.theunitedeffort.org/housing/affordable-housing/" target="_blank" rel="noreferrer" style={{ color: 'var(--hc-green-primary)' }}>
+                    Find affordable housing →
+                  </a>
+                </div>
+
+                <div className="program-block">
+                  <h3>Adult Eyeglasses — Free, 1st Saturday of Each Month</h3>
+                  <div className="hours-box">
+                    <h4>8:00 AM – 10:00 AM · First Saturday of every month</h4>
+                    <p style={{ margin: 0 }}>At Hope's Corner · 748 Mercy Street, Mountain View</p>
+                  </div>
+                  <p>In partnership with the <strong>Stanford Housing Equity Project (SHEP)</strong>, The United Effort Organization provides free glasses for unhoused individuals or recipients of public benefits. Bring your prescription if you have one!</p>
+                  <img
+                    src={lentesImg}
+                    alt="Lentes Gratis — Free Eyeglasses flyer"
+                    style={{ width: '100%', maxWidth: '420px', height: 'auto', display: 'block', marginTop: '16px', borderRadius: '8px', border: '1px solid var(--hc-border)' }}
+                    onError={(e) => { (e.target as HTMLImageElement).alt = 'Flyer unavailable' }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= NEWS TAB ================= */}
+        {activeTab === 'news' && (
+          <div className="tab-fade-in text-section">
+            <div className="community-sub-tabs">
+              <button
+                onClick={() => setNewsTab('press')}
+                className={`community-sub-btn ${newsTab === 'press' ? 'active' : ''}`}
+              >Press</button>
+              <button
+                onClick={() => setNewsTab('newsletters')}
+                className={`community-sub-btn ${newsTab === 'newsletters' ? 'active' : ''}`}
+              >Newsletters</button>
+            </div>
+
+            {newsTab === 'press' && (
+              <div>
+                <h2>Press</h2>
+                <ul className="press-list">
+                  <li><a href="https://www.cbsnews.com/sanfrancisco/news/peninsula-couple-found-joint-ministry-to-feed-support-homeless-residents/" target="_blank" rel="noreferrer">Peninsula couple found joint ministry to feed, support homeless residents</a></li>
+                  <li><a href="https://www.mv-voice.com/transportation/2026/02/17/changing-gears-local-nonprofits-provide-bikes-to-low-income-residents/" target="_blank" rel="noreferrer">Changing Gears: Local Nonprofits Provide Bikes To Low-Income Residents <span className="press-date">(Mountain View Voice, Feb 2026)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/community/2025/08/29/community-briefs-art-and-wine-festival-free-bike-repairs-and-mvhs-25-year-reunion/#h-hope-s-corner-expands-free-bicycle-repair-service" target="_blank" rel="noreferrer">Hope's Corner expands free bicycle repair service <span className="press-date">(Aug 2025)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/schools/los-altos-teens-reducing-food-waste-by-collecting-produce-for-hope-s-corner/article_4fc53a04-011d-4a0a-a7e4-d9ed0e0b79b9.html" target="_blank" rel="noreferrer">Los Altos teens reducing food waste by collecting produce for Hope's Corner <span className="press-date">(Los Altos Town Crier, Aug 2025)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/community/hope-s-corner-building-community-one-meal-and-shower-at-a-time/article_d2c7f398-a146-11ef-8b24-0f8688af63b3.html" target="_blank" rel="noreferrer">Hope's Corner: Building community one meal and shower at a time <span className="press-date">(Nov 2024)</span></a></li>
+                  <li><a href="https://bikex.org/15-about/partners/275-hopes-corner-beacon-of-support" target="_blank" rel="noreferrer">Hope's Corner: A Beacon of Support in Mountain View <span className="press-date">(Oct 2024)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/community/2024/07/26/community-briefs-hopes-corner-fundraiser-national-night-out-and-a-library-book-sale/" target="_blank" rel="noreferrer">Tour de Hope raises over $15K for Mountain View nonprofit Hope's Corner <span className="press-date">(Jul 2024)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/community/foundation-prioritizes-economic-uncertainty-in-round-of-grants/article_d34d02c2-439f-11ef-8866-e7a65b93021f.html" target="_blank" rel="noreferrer">Foundation prioritizes 'economic uncertainty' in round of grants <span className="press-date">(Jul 2024)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/community/tour-de-hope-2024-turning-wheels-into-meals/article_da721632-3e27-11ef-82d7-a7ade41b5ba3.html" target="_blank" rel="noreferrer">Tour de Hope 2024: Turning wheels into meals <span className="press-date">(Jul 2024)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/news/2024/01/05/holiday-fund-hopes-corner-mountain-views-local-weekend-meal-service-strives-to-help-those-in-need" target="_blank" rel="noreferrer">Holiday Fund: Hope's Corner, Mountain View's local weekend meal service <span className="press-date">(Jan 2024)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/holidayfund/hope-s-corner-providing-hot-meals-showers-for-vulnerable-residents/article_9df50702-7daf-11ee-adc5-4b20b17e338b.html" target="_blank" rel="noreferrer">Hope's Corner: Providing hot meals, showers for vulnerable residents <span className="press-date">(Nov 2023)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/news/2023/09/18/hopes-corner-in-mountain-view-offers-first-sit-down-meal-service-since-the-start-of-the-pandemic" target="_blank" rel="noreferrer">Hope's Corner in Mountain View offers first sit-down meal service since the pandemic <span className="press-date">(Sep 2023)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/hope-s-corner-marks-milestone-with-200-000th-meal-served/article_ccb30fb0-46a2-11ee-a841-4ffc7947beaa.html" target="_blank" rel="noreferrer">Hope's Corner marks milestone with 200,000th meal served <span className="press-date">(Aug 2023)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/community/hope-s-corner-tour-de-hope-fundraiser-returns-july-21/article_bc95ca22-0239-11ed-a0b0-1366cda783c3.html" target="_blank" rel="noreferrer">Hope's Corner Tour de Hope fundraiser returns July 21 <span className="press-date">(Jul 2022)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/news/2022/07/07/tour-de-hope-bike-fundraiser-is-full-speed-ahead-after-two-year-hiatus" target="_blank" rel="noreferrer">Tour de Hope bike fundraiser is full speed ahead after two-year hiatus <span className="press-date">(Jul 2022)</span></a></li>
+                  <li><a href="https://lavozdeanza.com/features/2022/06/18/a-de-anza-student-reflects-on-finding-power-and-community/" target="_blank" rel="noreferrer">A De Anza student reflects on finding power and community <span className="press-date">(Jun 2022)</span></a></li>
+                  <li><a href="https://mv-voice.com/news/2022/03/11/mountain-view-fire-department-offers-helping-hand-after-resident-was-struck-by-a-car" target="_blank" rel="noreferrer">Mountain View Fire Department offers helping hand after resident was struck by a car <span className="press-date">(Mar 2022)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/community/a-cut-above-mtn-view-s-hope-s-corner-offers-free-spa-day-for-the/article_27f9a222-c337-11eb-b6f8-c3e90a293584.html" target="_blank" rel="noreferrer">Haircuts for the homeless at Spa Day <span className="press-date">(Jun 2021)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/64226-hope-s-corner-showers-reopen-for-homeless" target="_blank" rel="noreferrer">Hope's Corner reopens showers for the homeless <span className="press-date">(Mar 2021)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/news/2021/02/12/hopes-corner-serves-its-100000th-meal" target="_blank" rel="noreferrer">Hope's Corner serves its 100,000th meal <span className="press-date">(Mountain View Voice, Feb 2021)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/63913-hope-s-corner-serves-100-000th-meal" target="_blank" rel="noreferrer">Hope's Corner serves 100,000th meal <span className="press-date">(Los Altos Town Crier, Feb 2021)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/178-upcoming-events/63723-hope-s-corner-seeks-toy-gift-card-donations" target="_blank" rel="noreferrer">Hope's Corner seeks toy, gift-card donations <span className="press-date">(Dec 2020)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/63554-local-boy-scouts-decorate-grocery-bags-for-nonprofit-group" target="_blank" rel="noreferrer">Local Boy Scouts decorate grocery bags for nonprofit group <span className="press-date">(Nov 2020)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/63109-high-school-volunteer-hosts-virtual-fundraiser-for-hope-s-corner" target="_blank" rel="noreferrer">High school volunteer hosts virtual fundraiser for Hope's Corner <span className="press-date">(Sep 2020)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/62925-hope-s-corner-hosts-virtual-5k-fundraiser-for-one-more-week" target="_blank" rel="noreferrer">Hope's Corner hosts virtual 5K fundraiser for one more week <span className="press-date">(Jul 2020)</span></a></li>
+                  <li><a href="https://mv-voice.com/news/2020/06/07/guest-opinion-hopes-corner-launches-new-services-in-response-to-coronavirus-pandemic" target="_blank" rel="noreferrer">Guest opinion: Hope's Corner launches new services in response to coronavirus pandemic <span className="press-date">(Jun 2020)</span></a></li>
+                  <li><a href="https://www.losaltosonline.com/news/sections/community/177-features/62370-homeless-at-hope-s-corner-get-empowered-with-chargers" target="_blank" rel="noreferrer">Homeless at Hope's Corner get 'empowered' with chargers <span className="press-date">(Apr 2020)</span></a></li>
+                  <li><a href="https://www.mv-voice.com/news/2019/05/15/major-upgrades-transform-downtown-church-into-hub-of-homeless-services" target="_blank" rel="noreferrer">Major upgrades transform downtown church into hub of homeless services <span className="press-date">(May 2019)</span></a></li>
+                </ul>
+              </div>
+            )}
+
+            {newsTab === 'newsletters' && (
+              <div>
+                <h2>Newsletters</h2>
+                <p>Read our past newsletters to stay connected with Hope's Corner's community and programs.</p>
+                <div className="newsletter-grid">
+                  {[
+                    { label: 'April 2026', url: 'https://www.hopes-corner.org/s/Email-Marketing-April-2026-Newsletter.pdf' },
+                    { label: 'March 2026', url: 'https://www.hopes-corner.org/s/Email-Marketing-March-2026-Newsletter.pdf' },
+                    { label: 'February 2026', url: 'https://www.hopes-corner.org/s/Hopes-Corner-Newsletter-February-2026.pdf' },
+                    { label: 'January 2026', url: 'https://www.hopes-corner.org/s/Email-Marketing-January-2026-Newsletter.pdf' },
+                    { label: 'December 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-December-2025-Newsletter-2.pdf' },
+                    { label: 'November 2025', url: 'https://www.hopes-corner.org/s/November-2025-Newsletter.pdf' },
+                    { label: 'October 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-October-2025-Newsletter.pdf' },
+                    { label: 'September 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-September-2025-Newsletter.pdf' },
+                    { label: 'August 2025', url: 'https://www.hopes-corner.org/s/August-2025' },
+                    { label: 'July 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-July-2025-Newsletter.pdf' },
+                    { label: 'June 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-June-2025-Newsletter.pdf' },
+                    { label: 'May 2025', url: 'https://www.hopes-corner.org/s/May-2025-Newsletter.pdf' },
+                    { label: 'April 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-April-2025-Newsletter.pdf' },
+                    { label: 'March 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-March-2025-Newsletter.pdf' },
+                    { label: 'February 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-February-2025-Newsletter.pdf' },
+                    { label: 'January 2025', url: 'https://www.hopes-corner.org/s/Email-Marketing-January-2025-Newsletter.pdf' },
+                    { label: 'December 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-December-2024-Newsletter.pdf' },
+                    { label: 'November 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-November-2024-Newsletter.pdf' },
+                    { label: 'October 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-October-2024-Newsletter.pdf' },
+                    { label: 'September 2024', url: 'https://www.hopes-corner.org/s/September-2024' },
+                    { label: 'June 2024', url: 'https://www.hopes-corner.org/s/June-2024-Newsletter.pdf' },
+                    { label: 'May 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-May-2024-Newsletter-2.pdf' },
+                    { label: 'April 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-April-2024-Newsletter.pdf' },
+                    { label: 'March 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-March-2024-Newletter.pdf' },
+                    { label: 'February 2024', url: 'https://www.hopes-corner.org/s/February-2024-Newsletter.pdf' },
+                    { label: 'January 2024', url: 'https://www.hopes-corner.org/s/Email-Marketing-January-2024-Newsletter.pdf' },
+                    { label: 'December 2023', url: 'https://www.hopes-corner.org/s/Email-Marketing-December-Newsletter.pdf' },
+                    { label: 'November 2023', url: 'https://www.hopes-corner.org/s/Email-Marketing-November-2023-Hope-s-Corner-Newsletter-compressed.pdf' },
+                    { label: 'October 2023', url: 'https://vr2.verticalresponse.com/emails/23089744256053?contact_id=23089754268655&sk=a24oB2JgVjBLE21VaAOoF5KCF37GSfLI' },
+                    { label: 'September 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255875?contact_id=23089746500771&sk=a24oB2JgVjBJEyFtaAOoF5E3kEnobPRz' },
+                    { label: 'August 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255847?contact_id=23089746500771&sk=a24oB2JgVjBJtHFhaAOoF5KySwZG9Rrk' },
+                    { label: 'July 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255735?contact_id=23089753846043&sk=a24oB2JgVjBIXcV1aAOoF5DEQ_0BNgUO' },
+                    { label: 'June 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255711?contact_id=23089746500771&sk=a24oB2JgVjBJqdSNaAOoF5ENaE1GInoV' },
+                    { label: 'May 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255614?contact_id=23089746500771&sk=a24oB2JgVjBJVQiFaAOoF5IhuTRB9gK9' },
+                    { label: 'April 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255401?contact_id=23089746500771&sk=a24oB2JgVjBJMNyZaAOoF5OhZI3TMXZY' },
+                    { label: 'March 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255369?contact_id=23089746500771&sk=a24oB2JgVjBIZziRaAOoF5LTXjf_LLWd' },
+                    { label: 'February 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255361?contact_id=23089746500771&sk=a24oB2JgVjBJAlS9aAOoF5DiDWLbTiS9' },
+                    { label: 'January 2023', url: 'https://vr2.verticalresponse.com/emails/23089744255276?contact_id=23089746500771&sk=a24oB2JgVjBLkiC1aAOoF5BeoxnLSguX' },
+                    { label: 'December 2022', url: 'https://vr2.verticalresponse.com/emails/23089744255136?contact_id=23089746500771&sk=a24oB2JgVjBKMXTFaAOoF5H1TV1GGAaw' },
+                    { label: 'November 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254970?contact_id=23089746500771&sk=a24oB2JgVjBKPOjZaAOoF5P3vOVNTBTh' },
+                    { label: 'October 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254844?contact_id=23089746500771&sk=a24oB2JgVjBKUPDlaAOoF5ODRXimeRyG' },
+                    { label: 'September 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254685?contact_id=23089746500771&sk=a24oB2JgVjBJC3DhaAOoF5GHFHodzEbt' },
+                    { label: 'August 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254603?contact_id=23089746500771&sk=a24oB2JgVjBItHwNaAOoF5AvqB_e29_K' },
+                    { label: 'July 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254288?sk=a24oB2JgVjBKtJwZaAOoF5OuhCsfKYyPJNrfwwo8lJRY%3D%2FaHR0cHM6Ly92' },
+                    { label: 'June 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254287?contact_id=23089746500771&sk=a24oB2JgVjBJEEwtaAOoF5L_k3ID9_4M' },
+                    { label: 'May 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254381?contact_id=23089746500771&sk=a24oB2JgVjBI8XQhaAOoF5L-2Ti29iF9' },
+                    { label: 'April 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254285?contact_id=23089746500771&sk=a24oB2JgVjBK4CQ1aAOoF5Cu8JXuVF14' },
+                    { label: 'March 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254099?contact_id=23089746500771&sk=a24oB2JgVjBJqgRFaAOoF5I9LrSl10yf' },
+                    { label: 'February 2022', url: 'https://vr2.verticalresponse.com/emails/23089744254015?contact_id=23089746500771&sk=a24oB2JgVjBKNcxVaAOoF5IzQUNNboxF' },
+                    { label: 'January 2022', url: 'https://vr2.verticalresponse.com/emails/23089744253985?contact_id=23089746500771&sk=a24oB2JgVjBJd8hRaAOoF5O1W2xo3iiz' },
+                    { label: 'December 2021', url: 'https://vr2.verticalresponse.com/emails/23089744253847?contact_id=23089746500771&sk=a24oB2JgVjBKx9hhaAOoF5FG9ijqcf_B' },
+                    { label: 'November 2021', url: 'https://vr2.verticalresponse.com/emails/23089744253675?contact_id=23089746500771&sk=a24oB2JgVjBJnHeFaAOoF5OSI3aGXAjs' },
+                    { label: 'October 2021', url: 'https://vr2.verticalresponse.com/emails/23089744253476?contact_id=23089746500771&sk=a24oB2JgVjBJTwutaAOoF5LzKnyiwieG' },
+                    { label: 'December 2020', url: 'https://vr2.verticalresponse.com/emails/23089744251161?sk=a24oB2JgVjBJb4VxZAOoF5AMwRQcy_6WRumIogLcBjr8%3D%2FaHR0cHM6Ly92' },
+                    { label: 'November 2020', url: 'https://vr2.verticalresponse.com/emails/23089744250651?sk=a24oB2JgVjBKT7zdZAOoF5IXANwBlCEcuHYP5zdlY2uU%3D%2FaHR0cHM6Ly92' },
+                    { label: 'September 2020', url: 'https://vr2.verticalresponse.com/emails/23089744250194?sk=a24oB2JgVjBJnfgBZAOoF5GRUvQTf-DFQNWTRve1I_ac%3D%2FaHR0cHM6Ly92' },
+                    { label: 'July 2020', url: 'https://vr2.verticalresponse.com/emails/23089744249776?sk=a24oB2JgVjBJmp-lZAOoF5OgxUrzfNepS7m3ww-Rx1Hw%3D%2FaHR0cHM6Ly92' },
+                    { label: 'April 2020', url: 'https://vr2.verticalresponse.com/emails/23089744248649?sk=a24oB2JgVjBIHYWtYAOoF5N98k3KjPqi1wyOcT1p96gU%3D%2FaHR0cHM6Ly92' },
+                    { label: 'March 2020', url: 'https://vr2.verticalresponse.com/emails/23089744248278?sk=a24oB2JgVjBKFe1pYAOoF5Cd5PpeKK_9pZd6vCJ7BIJ0%3D%2FaHR0cHM6Ly92' },
+                  ].map(({ label, url }) => (
+                    <a key={label} href={url} target="_blank" rel="noreferrer" className="newsletter-chip">
+                      📄 {label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
 
         {/* ================= CONTACT TAB ================= */}
         {activeTab === 'contact' && (

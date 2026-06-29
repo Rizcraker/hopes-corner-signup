@@ -448,3 +448,128 @@ body {
   background: #e74c3c;
   color: white;
 }
+
+/* --- Community & News sub-tab navigation --- */
+.community-sub-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  border-bottom: 2px solid var(--hc-border);
+  padding-bottom: 0;
+}
+
+.community-sub-btn {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 10px 18px;
+  margin-bottom: -2px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--hc-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.community-sub-btn:hover {
+  color: var(--hc-green-bright);
+}
+
+.community-sub-btn.active {
+  color: var(--hc-green-primary);
+  border-bottom-color: var(--hc-green-primary);
+}
+
+/* --- Story Cards --- */
+.story-card {
+  background: var(--hc-white);
+  border: 1px solid var(--hc-border);
+  border-radius: 12px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.story-card h3 {
+  color: var(--hc-green-primary);
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+}
+
+.story-card p {
+  margin: 0 0 14px 0;
+  color: var(--hc-text-main);
+  line-height: 1.6;
+}
+
+.story-link {
+  color: var(--hc-green-bright);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.story-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Press List --- */
+.press-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.press-list li {
+  border-bottom: 1px solid var(--hc-border);
+  padding: 14px 0;
+}
+
+.press-list li:last-child {
+  border-bottom: none;
+}
+
+.press-list a {
+  color: var(--hc-green-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.97rem;
+  line-height: 1.5;
+}
+
+.press-list a:hover {
+  text-decoration: underline;
+  color: var(--hc-green-bright);
+}
+
+.press-date {
+  font-weight: 400;
+  color: var(--hc-text-muted);
+  font-size: 0.88rem;
+}
+
+/* --- Newsletter Chips Grid --- */
+.newsletter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.newsletter-chip {
+  background: var(--hc-green-light);
+  border: 1px solid var(--hc-border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: var(--hc-green-dark);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.newsletter-chip:hover {
+  background: var(--hc-green-primary);
+  color: white;
+  border-color: var(--hc-green-primary);
+}
