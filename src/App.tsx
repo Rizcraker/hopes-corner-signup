@@ -19,6 +19,182 @@ interface Shift {
   description: string
   requirements: string
   spotsLeft: number
+  startDate: Date
+  dateLabel: string
+  timeLabel: string
+}
+
+// Helper: turns a day number into its ordinal form (1st, 2nd, 3rd, 4th...)
+const getOrdinalDay = (day: number) => {
+  const suffixes = ['th', 'st', 'nd', 'rd']
+  const remainder = day % 100
+  return day + (suffixes[(remainder - 20) % 10] || suffixes[remainder] || suffixes[0])
+}
+
+// Returns the next `count` calendar dates that fall on any of the given weekdays (0=Sun..6=Sat)
+const getUpcomingDatesForWeekdays = (weekdays: number[], count: number): Date[] => {
+  const dates: Date[] = []
+  const cursor = new Date()
+  cursor.setHours(0, 0, 0, 0)
+  while (dates.length < count) {
+    if (weekdays.includes(cursor.getDay())) {
+      dates.push(new Date(cursor))
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return dates
+}
+
+// Builds a fully-formed Shift object (with all derived date/time fields) for sample/testing data
+const buildSampleShift = (
+  id: number,
+  role: string,
+  date: Date,
+  startHour: number,
+  startMinute: number,
+  endHour: number,
+  endMinute: number,
+  location: string,
+  description: string,
+  requirements: string,
+  spotsLeft: number
+): Shift => {
+  const startDate = new Date(date)
+  startDate.setHours(startHour, startMinute, 0, 0)
+  const endDate = new Date(date)
+  endDate.setHours(endHour, endMinute, 0, 0)
+
+  const formattedDate = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const weekdayLong = startDate.toLocaleDateString('en-US', { weekday: 'long' })
+  const monthLong = startDate.toLocaleDateString('en-US', { month: 'long' })
+
+  return {
+    id,
+    role,
+    time: `${formattedDate} · ${startTime} - ${endTime}`,
+    location,
+    description,
+    requirements,
+    spotsLeft,
+    startDate,
+    dateLabel: `${weekdayLong}, ${monthLong} ${getOrdinalDay(startDate.getDate())}`,
+    timeLabel: `${startTime} - ${endTime}`
+  }
+}
+
+// Placeholder / testing data covering all 9 shift categories, with several upcoming dates each
+const generateSampleShifts = (): Shift[] => {
+  const MON = 1, TUE = 2, WED = 3, THU = 4, FRI = 5, SAT = 6
+
+  const roleConfigs: {
+    role: string
+    weekdays: number[]
+    start: [number, number]
+    end: [number, number]
+    location: string
+    description: string
+    requirements: string
+    spotsLeft: number
+  }[] = [
+    {
+      role: 'Monday Breakfast Service',
+      weekdays: [MON], start: [7, 15], end: [9, 30],
+      location: 'Main Hall / Kitchen',
+      description: 'Serve breakfast to guests, bus tables, and help keep the line moving.',
+      requirements: 'Age 16+, ability to stand for 3+ hours, friendly attitude.',
+      spotsLeft: 15
+    },
+    {
+      role: 'Mon & Wed Kitchen Assistant',
+      weekdays: [MON, WED], start: [7, 0], end: [9, 0],
+      location: 'Main Kitchen',
+      description: 'Assist kitchen staff with food prep, cooking, and cleanup before service.',
+      requirements: 'Age 18+, comfortable in a fast-paced kitchen environment.',
+      spotsLeft: 6
+    },
+    {
+      role: 'Program Assistant (Shower & Laundry)',
+      weekdays: [MON, WED], start: [8, 0], end: [10, 0],
+      location: 'Shower & Laundry Trailer',
+      description: 'Help guests sign up for shower/laundry slots and keep the area running smoothly.',
+      requirements: 'Age 16+, comfortable working directly with guests.',
+      spotsLeft: 8
+    },
+    {
+      role: 'RV Meal (Kitchen Assistant)',
+      weekdays: [TUE, THU], start: [15, 0], end: [17, 0],
+      location: 'Main Kitchen',
+      description: 'Prep and pack meals for RV meal delivery routes.',
+      requirements: 'Age 16+, ability to lift up to 20 lbs.',
+      spotsLeft: 5
+    },
+    {
+      role: 'Friday PM Food Recovery',
+      weekdays: [FRI], start: [14, 0], end: [16, 0],
+      location: 'Loading Dock',
+      description: 'Pick up and sort recovered food donations from local partners.',
+      requirements: "Age 16+, valid driver's license preferred.",
+      spotsLeft: 4
+    },
+    {
+      role: 'Friday PM Kitchen Prep',
+      weekdays: [FRI], start: [12, 0], end: [14, 0],
+      location: 'Main Kitchen',
+      description: 'Prep ingredients and set up the kitchen for Saturday breakfast service.',
+      requirements: 'Age 16+.',
+      spotsLeft: 7
+    },
+    {
+      role: 'Sat Breakfast Service',
+      weekdays: [SAT], start: [8, 45], end: [11, 15],
+      location: 'Main Hall / Kitchen',
+      description: 'Serve breakfast to guests during our largest weekly service.',
+      requirements: 'Age 16+, ability to stand for 3+ hours, friendly attitude.',
+      spotsLeft: 15
+    },
+    {
+      role: 'Sat Basement Clothing Organizer',
+      weekdays: [SAT], start: [9, 0], end: [11, 0],
+      location: 'Basement Clothing Closet',
+      description: 'Sort, fold, and organize donated clothing and supplies.',
+      requirements: 'Ages 14-15 welcome with a signed-up chaperone; 16+ may sign up solo.',
+      spotsLeft: 10
+    },
+    {
+      role: 'Sat RV Meal Delivery',
+      weekdays: [SAT], start: [11, 0], end: [13, 0],
+      location: 'Parking Lot / RV Route',
+      description: 'Ride along and help deliver packed meals to RV community sites.',
+      requirements: 'Ages 14-15 welcome with a signed-up chaperone; 16+ may sign up solo.',
+      spotsLeft: 6
+    }
+  ]
+
+  let idCounter = 1
+  const sampleShifts: Shift[] = []
+
+  roleConfigs.forEach(config => {
+    const dates = getUpcomingDatesForWeekdays(config.weekdays, 4) // 4 upcoming dates per role
+    dates.forEach(date => {
+      sampleShifts.push(
+        buildSampleShift(
+          idCounter++,
+          config.role,
+          date,
+          config.start[0], config.start[1],
+          config.end[0], config.end[1],
+          config.location,
+          config.description,
+          config.requirements,
+          config.spotsLeft
+        )
+      )
+    })
+  })
+
+  return sampleShifts
 }
 
 function App() {
@@ -42,6 +218,63 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [infoMessage, setInfoMessage] = useState<string | null>(null)
+
+  // Shift browser: sorting mode + which accordion rows/dates are expanded
+  const [sortMode, setSortMode] = useState<'job' | 'date' | 'calendar'>('job')
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set())
+  const [expandedDateKeys, setExpandedDateKeys] = useState<Set<string>>(new Set())
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(null)
+  const [isRefreshSpinning, setIsRefreshSpinning] = useState(false)
+
+  const toggleJobGroup = (role: string) => {
+    setExpandedJobs(prev => {
+      const next = new Set(prev)
+      next.has(role) ? next.delete(role) : next.add(role)
+      return next
+    })
+  }
+
+  const toggleDateEntry = (key: string) => {
+    setExpandedDateKeys(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const handleRefreshShifts = () => {
+    setIsRefreshSpinning(true)
+    if (isBypassActive) {
+      setShifts(generateSampleShifts())
+      window.setTimeout(() => setIsRefreshSpinning(false), 500)
+    } else {
+      fetchShifts().finally(() => {
+        window.setTimeout(() => setIsRefreshSpinning(false), 500)
+      })
+    }
+  }
+
+  // Group shifts by job title (role), preserving chronological order within each group
+  const shiftsByJob = shifts.reduce((acc, shift) => {
+    if (!acc[shift.role]) acc[shift.role] = []
+    acc[shift.role].push(shift)
+    return acc
+  }, {} as Record<string, Shift[]>)
+  Object.values(shiftsByJob).forEach(group => group.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()))
+  const jobGroupNames = Object.keys(shiftsByJob).sort((a, b) =>
+    shiftsByJob[a][0].startDate.getTime() - shiftsByJob[b][0].startDate.getTime()
+  )
+
+  // Flat chronological order, used by both the Date list and the Calendar view
+  const shiftsByDate = [...shifts].sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+
+  // Group shifts by calendar month for the Calendar view
+  const shiftsByMonth = shiftsByDate.reduce((acc, shift) => {
+    const monthKey = shift.startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    if (!acc[monthKey]) acc[monthKey] = []
+    acc[monthKey].push(shift)
+    return acc
+  }, {} as Record<string, Shift[]>)
 
   // User info data from user_info supabase tracking matrix
   const [userInfo, setUserInfo] = useState<{
@@ -425,6 +658,11 @@ function App() {
             hour12: true
           })
 
+          // Full "Weekday, Month Xth" label used by the Job / Calendar accordions
+          const weekdayLong = startDate.toLocaleDateString('en-US', { weekday: 'long' })
+          const monthLong = startDate.toLocaleDateString('en-US', { month: 'long' })
+          const dateLabel = `${weekdayLong}, ${monthLong} ${getOrdinalDay(startDate.getDate())}`
+
           return {
             id: shift.id,
             role: shift.title,
@@ -432,7 +670,10 @@ function App() {
             location: shift.location || 'Location TBD',
             description: shift.description || 'Description not available',
             requirements: shift.requirements || 'Requirements TBD',
-            spotsLeft: shift.spots_left ?? 0
+            spotsLeft: shift.spots_left ?? 0,
+            startDate,
+            dateLabel,
+            timeLabel: `${startTime} - ${endTime}`
           }
         })
         .filter((shift): shift is Shift => shift !== null)
@@ -448,7 +689,7 @@ function App() {
 
   useEffect(() => {
     if (isBypassActive) {
-      fetchShifts()
+      setShifts(generateSampleShifts())
       if (!userInfo) {
         setUserInfo({
           hours_volunteered: 8,
@@ -473,6 +714,33 @@ function App() {
     if (isBypassActive) return 'Sandbox Dev'
     return userSession?.user?.user_metadata?.first_name || userSession?.user?.email || 'Volunteer'
   }
+
+  // Shared shift detail card used across the Job / Date / Calendar views so signup behaves identically everywhere
+  const renderShiftCard = (shift: Shift) => (
+    <div key={shift.id} className="shift-card">
+      <div className="shift-card-header">
+        <h4>{shift.role}</h4>
+        <span className="spots-badge">{shift.spotsLeft} spots left</span>
+      </div>
+      <div className="shift-card-body">
+        <p><strong>📅 Time:</strong> {shift.dateLabel} · {shift.timeLabel}</p>
+        <p><strong>📍 Location:</strong> {shift.location}</p>
+        <p><strong>📝 Description:</strong> {shift.description}</p>
+        <div className="shift-requirements"><strong>⚠️ Requirements:</strong> {shift.requirements}</div>
+      </div>
+      <div className="shift-card-footer">
+        <button
+          className="btn-accent"
+          onClick={async () => {
+            await updateActiveShifts(shift)
+            alert(`Successfully requested to join the "${shift.role}" shift!`)
+          }}
+        >
+          Sign Up To Volunteer
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="App">
@@ -747,45 +1015,145 @@ function App() {
                   <button onClick={handleSignOut} className="btn-secondary logout-btn">Log Out</button>
                 </div>
 
+                {/* Volunteer opportunities info box — sits right above the shift browser */}
+                <div className="volunteer-info-box">
+                  <p className="info-line info-brand">Hope's Corner</p>
+                  <p className="info-line info-brand">2026 Volunteer Opportunities</p>
+                  <p className="info-line">January 1st – December 31st, 2026</p>
+                  <p className="info-line">748 Mercy St.</p>
+                  <p className="info-line info-thankyou">
+                    Thank you for signing up to volunteer with Hope's Corner. We're almost entirely volunteer-run, we literally can't do this without you!
+                  </p>
+                  <div className="info-age-requirements">
+                    <p className="info-age-title">Age Requirements:</p>
+                    <ul>
+                      <li><strong>14–15 (with chaperone, both must sign up):</strong> RV Delivery, Clothing &amp; Supplies Organizing</li>
+                      <li><strong>16+:</strong> Breakfast Service, Program Assistant (Shower/Laundry), RV Kitchen Assistant, Friday Prep, Bicycle Program</li>
+                      <li><strong>18+:</strong> Kitchen Assistant, Community Engagement</li>
+                    </ul>
+                  </div>
+                </div>
+
                 <div className="shifts-section">
                   <div className="section-header">
                     <h3>Available Volunteering Shifts</h3>
-                    <button onClick={fetchShifts} className="btn-refresh" disabled={loading}>
-                      {loading ? 'Refreshing...' : '🔄 Refresh List'}
+                    <button
+                      onClick={handleRefreshShifts}
+                      className={`btn-refresh ${isRefreshSpinning ? 'is-spinning' : ''}`}
+                      disabled={loading}
+                    >
+                      <span className="btn-refresh-icon">🔄</span>
+                      {loading ? 'Refreshing...' : 'Refresh List'}
                     </button>
+                  </div>
+
+                  <div className="sort-controls">
+                    <span className="sort-label">Sort by:</span>
+                    <div className="sort-btn-group">
+                      <button type="button" className={`sort-btn ${sortMode === 'job' ? 'active' : ''}`} onClick={() => setSortMode('job')}>Job</button>
+                      <button type="button" className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`} onClick={() => setSortMode('date')}>Date</button>
+                      <button type="button" className={`sort-btn ${sortMode === 'calendar' ? 'active' : ''}`} onClick={() => setSortMode('calendar')}>Calendar</button>
+                    </div>
                   </div>
 
                   {errorMessage && <div className="error-banner">{errorMessage}</div>}
 
                   {loading ? (
                     <div className="loading-spinner">Loading shift schedule...</div>
-                  ) : (
-                    <div className="shifts-grid">
-                      {shifts.map((shift, index) => (
-                        <div key={index} className="shift-card">
-                          <div className="shift-card-header">
-                            <h4>{shift.role}</h4>
-                            <span className="spots-badge">{shift.spotsLeft} spots left</span>
-                          </div>
-                          <div className="shift-card-body">
-                            <p><strong>📅 Time:</strong> {shift.time}</p>
-                            <p><strong>📍 Location:</strong> {shift.location}</p>
-                            <p><strong>📝 Description:</strong> {shift.description}</p>
-                            <div className="shift-requirements"><strong>⚠️ Requirements:</strong> {shift.requirements}</div>
-                          </div>
-                          <div className="shift-card-footer">
-                            <button
-                              className="btn-accent"
-                              onClick={async () => {
-                                await updateActiveShifts(shift)
-                                alert(`Successfully requested to join the "${shift.role}" shift!`)
-                              }}
-                            >
-                              Claim This Shift
+                  ) : shifts.length === 0 ? (
+                    <p className="note-text">No shifts are currently posted. Check back soon!</p>
+                  ) : sortMode === 'job' ? (
+                    /* ---------- JOB VIEW: accordion grouped by role, expand to reveal individual dates ---------- */
+                    <div className="job-accordion">
+                      {jobGroupNames.map((role, groupIndex) => {
+                        const group = shiftsByJob[role]
+                        const isOpen = expandedJobs.has(role)
+                        return (
+                          <div key={role} className="job-group">
+                            <button type="button" className="job-group-header" onClick={() => toggleJobGroup(role)}>
+                              <span className={`job-group-toggle-icon ${isOpen ? 'open' : ''}`}>▸</span>
+                              <span className="job-group-title">{groupIndex + 1}. {role}</span>
+                              <span className="spots-badge">{group.length} date{group.length !== 1 ? 's' : ''}</span>
                             </button>
+                            {isOpen && (
+                              <div className="job-group-body">
+                                {group.map(shift => {
+                                  const dateKey = `${role}-${shift.id}`
+                                  const dateOpen = expandedDateKeys.has(dateKey)
+                                  return (
+                                    <div key={shift.id} className="job-date-entry">
+                                      <button type="button" className="job-date-header" onClick={() => toggleDateEntry(dateKey)}>
+                                        <span className={`job-date-toggle-icon ${dateOpen ? 'open' : ''}`}>+</span>
+                                        <span className="job-date-label">{shift.dateLabel}</span>
+                                        <span className="spots-badge">{shift.spotsLeft} spots left</span>
+                                      </button>
+                                      {dateOpen && (
+                                        <div className="job-date-details">
+                                          {renderShiftCard(shift)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : sortMode === 'date' ? (
+                    /* ---------- DATE VIEW: flat chronological list, grouped by day ---------- */
+                    <div className="date-view">
+                      {Array.from(new Set(shiftsByDate.map(s => s.dateLabel))).map(dateLabel => (
+                        <div key={dateLabel} className="date-block">
+                          <h4 className="date-block-title">{dateLabel}</h4>
+                          <div className="shifts-grid">
+                            {shiftsByDate.filter(s => s.dateLabel === dateLabel).map(renderShiftCard)}
                           </div>
                         </div>
                       ))}
+                    </div>
+                  ) : (
+                    /* ---------- CALENDAR VIEW: pick a day, see what's available ---------- */
+                    <div className="calendar-view">
+                      {Object.entries(shiftsByMonth).map(([month, monthShifts]) => {
+                        const uniqueDayKeys = Array.from(new Set(monthShifts.map(s => s.startDate.toDateString())))
+                        return (
+                          <div key={month} className="calendar-month-block">
+                            <h4 className="calendar-month-title">{month}</h4>
+                            <div className="calendar-day-chips">
+                              {uniqueDayKeys.map(dayKey => {
+                                const sample = monthShifts.find(s => s.startDate.toDateString() === dayKey)!
+                                const isSelected = selectedCalendarDay === dayKey
+                                return (
+                                  <button
+                                    key={dayKey}
+                                    type="button"
+                                    className={`calendar-day-chip ${isSelected ? 'selected' : ''}`}
+                                    onClick={() => setSelectedCalendarDay(isSelected ? null : dayKey)}
+                                  >
+                                    <span className="calendar-day-weekday">{sample.startDate.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                                    <span className="calendar-day-num">{sample.startDate.getDate()}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {selectedCalendarDay ? (
+                        <div className="calendar-selected-shifts">
+                          <h4>
+                            Shifts on {shiftsByDate.find(s => s.startDate.toDateString() === selectedCalendarDay)?.dateLabel}
+                          </h4>
+                          <div className="shifts-grid">
+                            {shiftsByDate.filter(s => s.startDate.toDateString() === selectedCalendarDay).map(renderShiftCard)}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="note-text">Select a day above to see available shifts.</p>
+                      )}
                     </div>
                   )}
                 </div>
