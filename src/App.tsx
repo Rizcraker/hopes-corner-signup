@@ -16,44 +16,10 @@ interface Shift {
   role: string
   time: string
   location: string
+  description: string
   requirements: string
   spotsLeft: number
 }
-
-const SHIFTS_DB: Shift[] = [
-  { 
-    id: 1, 
-    role: 'Breakfast Food Server', 
-    time: 'Sat, Jun 22 · 7:00 AM - 10:00 AM', 
-    location: 'Hope\'s Corner Kitchen',
-    requirements: 'Age 16+, ability to stand for 3 hours, friendly attitude.',
-    spotsLeft: 4
-  },
-  { 
-    id: 2, 
-    role: 'Lunch Prep & Packing', 
-    time: 'Sat, Jun 22 · 10:15 AM - 1:30 PM', 
-    location: 'Hope\'s Corner Kitchen',
-    requirements: 'Age 16+, basic kitchen safety knowledge preferred.',
-    spotsLeft: 2
-  },
-  { 
-    id: 3, 
-    role: 'Shower Program Monitor', 
-    time: 'Sat, Jun 22 · 8:00 AM - 12:00 PM', 
-    location: 'Shower Facilities',
-    requirements: 'Age 18+, clear communication skills, background check required.',
-    spotsLeft: 1
-  },
-  { 
-    id: 4, 
-    role: 'Site Cleanup & Breakdown', 
-    time: 'Sat, Jun 22 · 1:00 PM - 3:00 PM', 
-    location: 'Main Hall / Kitchen',
-    requirements: 'Age 14+ (with adult), ability to lift up to 25 lbs.',
-    spotsLeft: 5
-  },
-]
 
 function App() {
   // Navigation tabs state
@@ -420,10 +386,61 @@ function App() {
   const fetchShifts = async () => {
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setShifts([...SHIFTS_DB])
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('id, title, description, spots_left, shift_start, shift_end, location, requirements')
+
+      if (error) throw error
+
+      const mappedShifts = data
+        .map(shift => {
+          // Validate required fields
+          if (!shift.title || !shift.shift_start || !shift.shift_end) {
+            return null
+          }
+
+          const startDate = new Date(shift.shift_start)
+          const endDate = new Date(shift.shift_end)
+
+          // Check for invalid dates
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return null
+          }
+
+          const formattedDate = startDate.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+          } as const)
+
+          const startTime = startDate.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+
+          const endTime = endDate.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+
+          return {
+            id: shift.id,
+            role: shift.title,
+            time: `${formattedDate} · ${startTime} - ${endTime}`,
+            location: shift.location || 'Location TBD',
+            description: shift.description || 'Description not available',
+            requirements: shift.requirements || 'Requirements TBD',
+            spotsLeft: shift.spots_left ?? 0
+          }
+        })
+        .filter((shift): shift is Shift => shift !== null)
+
+      setShifts(mappedShifts)
     } catch (error) {
-      console.error(error)
+      console.error('Error fetching shifts:', error)
+      setErrorMessage('Failed to fetch shifts. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -744,8 +761,8 @@ function App() {
                     <div className="loading-spinner">Loading shift schedule...</div>
                   ) : (
                     <div className="shifts-grid">
-                      {shifts.map((shift) => (
-                        <div key={shift.id} className="shift-card">
+                      {shifts.map((shift, index) => (
+                        <div key={index} className="shift-card">
                           <div className="shift-card-header">
                             <h4>{shift.role}</h4>
                             <span className="spots-badge">{shift.spotsLeft} spots left</span>
@@ -753,11 +770,12 @@ function App() {
                           <div className="shift-card-body">
                             <p><strong>📅 Time:</strong> {shift.time}</p>
                             <p><strong>📍 Location:</strong> {shift.location}</p>
+                            <p><strong>📝 Description:</strong> {shift.description}</p>
                             <div className="shift-requirements"><strong>⚠️ Requirements:</strong> {shift.requirements}</div>
                           </div>
                           <div className="shift-card-footer">
-                            <button 
-                              className="btn-accent" 
+                            <button
+                              className="btn-accent"
                               onClick={async () => {
                                 await updateActiveShifts(shift)
                                 alert(`Successfully requested to join the "${shift.role}" shift!`)
