@@ -119,23 +119,9 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
           })
           if (error) throw error
           if (data.user) {
-            // Create corresponding row in user_info table
-            await supabase.from('user_info').insert({
-              user_id: data.user.id,
-              hours_volunteered: 0,
-              active_shifts: [],
-              first_name: firstName,
-              last_name: lastName,
-              birthday: birthday || null,
-              phone_number: phoneNumber,
-              emergency_contact_name: emergencyContactName,
-              emergency_contact_phone: emergencyContactPhone,
-              employer: employer,
-              street_address: streetAddress,
-              city: city,
-              zip_code: zipCode,
-              organization: finalOrganization
-            })
+            // The user_info row is NOT inserted here: with email confirmation enabled there is no
+            // session yet, so RLS would reject it. useUserInfo.fetchUserInfo creates the row from
+            // the auth user_metadata (set above) on the user's first confirmed login instead.
             setInfoMessage('Registration successful! Please check your email for verification.')
             // Reset form for next registration
             setEmail('')

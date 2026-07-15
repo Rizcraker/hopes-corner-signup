@@ -112,6 +112,11 @@ function AuthPanel({
       </div>
 
       <form onSubmit={handleAuthSubmit} className="auth-form">
+        {isSignUp && (
+          <span className="step-indicator">
+            Step {registrationStep} of 2 · {registrationStep === 1 ? 'Account' : 'Your Details'}
+          </span>
+        )}
         <h3>{isSignUp ? 'Create an Account' : 'Welcome Back'}</h3>
         <p className="form-instructions">
           {isSignUp

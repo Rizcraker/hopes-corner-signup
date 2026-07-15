@@ -24,39 +24,31 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         .single()
 
       if (error) {
-        // If no record exists, create one with default values
+        // If no record exists, create one now. This is the reliable creation path: the insert
+        // attempted during registration runs before the email is confirmed (no session), so RLS
+        // rejects it. The profile fields live in auth user_metadata — build the row from those.
         if (error.code === 'PGRST116') {
-          await supabase.from('user_info').insert({
-            user_id: session.user.id,
+          const meta = session.user.user_metadata ?? {}
+          const profileRow = {
             hours_volunteered: 0,
-            active_shifts: [],
-            first_name: '',
-            last_name: '',
-            birthday: null,
-            phone_number: '',
-            emergency_contact_name: '',
-            emergency_contact_phone: '',
-            employer: '',
-            street_address: '',
-            city: '',
-            zip_code: '',
-            organization: ''
-          })
-          setUserInfo({
-            hours_volunteered: 0,
-            active_shifts: [],
-            first_name: '',
-            last_name: '',
-            birthday: null,
-            phone_number: '',
-            emergency_contact_name: '',
-            emergency_contact_phone: '',
-            employer: '',
-            street_address: '',
-            city: '',
-            zip_code: '',
-            organization: ''
-          })
+            active_shifts: [] as string[],
+            first_name: meta.first_name ?? '',
+            last_name: meta.last_name ?? '',
+            birthday: meta.birthday || null,
+            phone_number: meta.phone_number ?? '',
+            emergency_contact_name: meta.emergency_contact_name ?? '',
+            emergency_contact_phone: meta.emergency_contact_phone ?? '',
+            employer: meta.employer ?? '',
+            street_address: meta.street_address ?? '',
+            city: meta.city ?? '',
+            zip_code: meta.zip_code ?? '',
+            organization: meta.organization ?? ''
+          }
+          const { error: insertError } = await supabase
+            .from('user_info')
+            .insert({ user_id: session.user.id, ...profileRow })
+          if (insertError) throw insertError
+          setUserInfo(profileRow)
         } else {
           throw error
         }

@@ -15,7 +15,7 @@ function ContactPage() {
         </div>
         <div className="form-group">
           <label>Message</label>
-          <textarea rows={4} placeholder="How can we help you?" style={{ width: '100%', borderRadius: '7px', border: '1px solid var(--hc-border)', padding: '10px', boxSizing: 'border-box' }}></textarea>
+          <textarea rows={4} placeholder="How can we help you?"></textarea>
         </div>
         <button className="btn btn-primary" type="button" style={{ width: 'auto' }}>Send Message</button>
       </form>

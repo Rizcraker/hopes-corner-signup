@@ -37,22 +37,29 @@ function VolunteerDashboard({
   return (
     <div className="dashboard-container">
       <div className="welcome-banner">
-        <div>
+        <div style={{ flex: 1, minWidth: '260px' }}>
           <h3>Welcome back, {getUserName()}!</h3>
           <p>Thank you for contributing your time and energy to Hope's Corner.</p>
 
           {/* Database metric stats display */}
           {userInfo && (
             <div className="user-db-stats">
-              <p className="user-stats">
-                <strong>Hours Volunteered:</strong> {userInfo.hours_volunteered}
-              </p>
+              <div className="dash-stats-row">
+                <div className="stat-card">
+                  <span className="stat-value">{userInfo.hours_volunteered}</span>
+                  <span className="stat-label">Hours Volunteered</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{userInfo.active_shifts.length}</span>
+                  <span className="stat-label">Upcoming Shifts</span>
+                </div>
+              </div>
               {userInfo.active_shifts.length > 0 && (
                 <div className="active-shifts-list">
                   <h4>Your Active Scheduled Shifts:</h4>
                   <ul>
                     {userInfo.active_shifts.map((shift, idx) => (
-                      <li key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <li key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                         <span>✅ {shift}</span>
                         <button
                           onClick={() => removeActiveShift(shift)}
@@ -60,11 +67,11 @@ function VolunteerDashboard({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ff6b6b',
+                            color: '#c0392b',
                             cursor: 'pointer',
-                            fontSize: '1.2rem',
+                            fontSize: '1.1rem',
                             padding: '0',
-                            marginLeft: '0.5rem'
+                            lineHeight: 1
                           }}
                           title="Remove shift"
                         >
