@@ -1,23 +1,29 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import logoGreen from '../../assets/Hopes_Corner_Logo_Green.png'
 
-const NAV_ITEMS: { path: string; label: string }[] = [
-  { path: '/', label: 'Home' },
-  { path: '/donate', label: 'Donate' },
-  { path: '/volunteer', label: 'Volunteer' },
-  { path: '/learn', label: 'Learn' },
-  { path: '/about', label: 'About' },
-  { path: '/community', label: 'Community' },
-  { path: '/news', label: 'News' },
-  { path: '/contact', label: 'Contact' },
-]
-
-// Rendered as <button>, not <a>/NavLink, on purpose: .nav-tab relies on the UA button defaults
-// (no underline, button font-family) that an anchor would not inherit from App.css.
-function Navbar() {
+function Navbar({ isAdmin }: { isAdmin: boolean }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
+  // Build navigation items - add Admin option only if user is an admin
+  const NAV_ITEMS: { path: string; label: string }[] = [
+    { path: '/', label: 'Home' },
+    { path: '/donate', label: 'Donate' },
+    { path: '/volunteer', label: 'Volunteer' },
+    { path: '/learn', label: 'Learn' },
+    { path: '/about', label: 'About' },
+    { path: '/community', label: 'Community' },
+    { path: '/news', label: 'News' },
+    { path: '/contact', label: 'Contact' },
+  ]
+
+  // Add Admin link only if user is an admin
+  if (isAdmin) {
+    NAV_ITEMS.push({ path: '/admin', label: 'Admin' })
+  }
+
+  // Rendered as <button>, not <a>/NavLink, on purpose: .nav-tab relies on the UA button defaults
+  // (no underline, button font-family) that an anchor would not inherit from App.css.
   return (
     <header className="navbar">
       <div className="nav-container">

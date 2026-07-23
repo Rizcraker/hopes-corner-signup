@@ -1,6 +1,7 @@
 import './App.css'
-import { useState, useRef, useLayoutEffect } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { supabase } from './lib/supabaseClient'
 import { useVolunteerAuth } from './hooks/useVolunteerAuth'
 import type { AuthDataBridge } from './hooks/useVolunteerAuth'
 import { useUserInfo } from './hooks/useUserInfo'
@@ -16,6 +17,7 @@ import AboutPage from './pages/AboutPage'
 import CommunityPage from './pages/CommunityPage'
 import NewsPage from './pages/NewsPage'
 import ContactPage from './pages/ContactPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   const { pathname } = useLocation()
@@ -46,24 +48,52 @@ function App() {
     userInfo: userInfoApi.userInfo,
     setUserInfo: userInfoApi.setUserInfo,
   })
+  const navigate = useNavigate()
 
-  // This is what lets the auth listener reach the shifts / user-info hooks without the three
-  // hooks depending on each other in a cycle. It runs in a layout effect, which React fires
-  // before any passive effect — including useVolunteerAuth's — so the bridge is always populated
-  // before the auth listener subscribes or getSession() resolves.
+  // Populate the data bridge so hooks can call each other
   useLayoutEffect(() => {
     dataBridge.current = {
       fetchShifts: shiftsApi.fetchShifts,
       fetchUserInfo: userInfoApi.fetchUserInfo,
-      clearShifts: () => shiftsApi.setShifts([]),
-      clearUserInfo: () => userInfoApi.setUserInfo(null),
+      clearShifts: shiftsApi.clearShifts,
+      clearUserInfo: userInfoApi.clearUserInfo,
     }
-  })
+  }, [shiftsApi, userInfoApi])
+
+  // Track if we've already handled redirection after login
+  const [redirected, setRedirected] = useState(false)
+
+  // Handle post-login redirection - only run once after successful login
+  useEffect(() => {
+    // Only redirect if:
+    // 1. Auth has completed (no longer loading)
+    // 2. User is authenticated (has a session)
+    // 3. Admin status has been loaded
+    // 4. We haven't redirected yet
+    if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected && !auth.isBypassActive) {
+      setRedirected(true)
+      // Redirect based on admin status
+      if (auth.isAdmin) {
+        // Admins go to admin dashboard
+        navigate('/admin', { replace: true })
+      } else {
+        // Regular users go to volunteer page
+        navigate('/volunteer', { replace: true })
+      }
+    }
+  }, [auth.authLoading, auth.userSession, auth.adminLoading, redirected, auth.isBypassActive, navigate])
+
+  // Reset redirect flag when user logs out
+  useEffect(() => {
+    if (!auth.userSession) {
+      setRedirected(false)
+    }
+  }, [auth.userSession, setRedirected])
 
   return (
     <div className="App">
       {/* Universal Top Navigation Header */}
-      <Navbar />
+      <Navbar isAdmin={auth.isAdmin} />
 
       {/* Primary Display Content Grid */}
       <main className="main-content">
@@ -92,6 +122,21 @@ function App() {
 
           {/* ================= CONTACT TAB ================= */}
           <Route path="/contact" element={<ContactPage />} />
+
+          {/* ================= ADMIN DASHBOARD (ACCESSIBLE ONLY TO ADMINS) ================= */}
+          <Route
+            path="/admin"
+            element={
+              !auth.adminLoading && auth.isAdmin ? (
+                <AdminPage
+                  getUserName={auth.getUserName}
+                  shiftsApi={shiftsApi}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
 
           {/* Unknown paths fall back to Home */}
           <Route path="*" element={<Navigate to="/" replace />} />

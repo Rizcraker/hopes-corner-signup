@@ -175,5 +175,9 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
     }
   }
 
-  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift }
+  const clearUserInfo = () => {
+    setUserInfo(null)
+  }
+
+  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift, clearUserInfo }
 }

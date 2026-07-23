@@ -179,11 +179,16 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
     }
   }, [isBypassActive])
 
+  const clearShifts = () => {
+    setShifts([])
+  }
+
   return {
     shifts, setShifts,
     loading,
     fetchShifts,
     handleRefreshShifts,
+    clearShifts,
     isRefreshSpinning,
     sortMode, setSortMode,
     expandedJobs, toggleJobGroup,

@@ -28,6 +28,10 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [infoMessage, setInfoMessage] = useState<string | null>(null)
 
+  // Admin status
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminLoading, setAdminLoading] = useState(true)
+
   // Registration flow state
   const [registrationStep, setRegistrationStep] = useState(1);
 
@@ -60,6 +64,30 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     setCustomGroup('');
   };
 
+  const checkAdminStatus = async (userId: string) => {
+    setAdminLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        // A record means this user is an admin
+        setIsAdmin(!!data);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUserSession(session)
@@ -82,6 +110,22 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Admin status check whenever user session changes
+  useEffect(() => {
+    if (isBypassActive) {
+      // In bypass mode, treat as non-admin
+      setIsAdmin(false);
+      setAdminLoading(false);
+      return;
+    }
+    if (userSession?.user) {
+      checkAdminStatus(userSession.user.id);
+    } else {
+      setIsAdmin(false);
+      setAdminLoading(false);
+    }
+  }, [userSession?.user?.id, isBypassActive]);
 
   const handleAuthSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -201,5 +245,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     handleAuthSubmit,
     handleSignOut,
     getUserName,
+    isAdmin,
+    adminLoading,
   }
 }
