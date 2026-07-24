@@ -51,7 +51,6 @@ function AdminDashboard({
         .order('hours_volunteered', { ascending: false })
       if (error) throw error
       console.log('Fetched volunteers:', data)
-      alert('Successfully loaded ' + data.length + ' volunteers')
       setVolunteers(data)
     } catch (err) {
       console.error('Error fetching volunteers:', err)

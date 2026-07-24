@@ -24,7 +24,6 @@ function ShiftCard({ shift, onSignUp }: ShiftCardProps) {
           className="btn-accent"
           onClick={async () => {
             await onSignUp(shift)
-            alert(`Successfully requested to join the "${shift.role}" shift!`)
           }}
         >
           Sign Up To Volunteer
