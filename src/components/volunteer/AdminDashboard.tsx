@@ -1,5 +1,7 @@
 import type { Shift } from '../../types/shift'
 import ShiftBrowser from '../shifts/ShiftBrowser'
+import { supabase } from '../../lib/supabaseClient'
+import { useState, useEffect } from 'react'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -31,6 +33,39 @@ function AdminDashboard({
   onSignUp,
   ...browser
 }: AdminDashboardProps) {
+  const [volunteers, setVolunteers] = useState<any[]>([])
+  const [volunteersLoading, setVolunteersLoading] = useState(false)
+  const [lastClickTime, setLastClickTime] = useState<string | null>(null)
+
+  const handleClickVolunteers = async () => {
+    setLastClickTime(new Date().toLocaleTimeString())
+    await fetchVolunteers()
+  } 
+
+  const fetchVolunteers = async () => {
+    setVolunteersLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('user_info')
+        .select('*')
+        .order('hours_volunteered', { ascending: false })
+      if (error) throw error
+      console.log('Fetched volunteers:', data)
+      alert('Successfully loaded ' + data.length + ' volunteers')
+      setVolunteers(data)
+    } catch (err) {
+      console.error('Error fetching volunteers:', err)
+      alert('Failed to load volunteers: ' + err)
+    } finally {
+      setVolunteersLoading(false)
+    }
+  }
+
+  // Fetch volunteers on mount
+  useEffect(() => {
+    fetchVolunteers()
+  }, [])
+
   return (
     <div className="dashboard-container">
       <div className="welcome-banner">
@@ -43,7 +78,7 @@ function AdminDashboard({
             <h4>Administrative Overview</h4>
             <div className="dash-stats-row">
               <div className="stat-card">
-                <span className="stat-value">--</span>
+                <span className="stat-value">{volunteers.length}</span>
                 <span className="stat-label">Registered Volunteers</span>
               </div>
               <div className="stat-card">
@@ -64,8 +99,8 @@ function AdminDashboard({
               <button onClick={browser.refreshAdminStats} className="btn-primary" disabled={browser.loading || browser.isRefreshSpinning}>
                 {browser.isRefreshSpinning ? 'Refreshing...' : 'Refresh Statistics'}
               </button>
-              <button onClick={browser.refreshUsers} className="btn-secondary">
-                View All Volunteers
+              <button onClick={handleClickVolunteers} className="btn-secondary" disabled={volunteersLoading}>
+                {volunteersLoading ? 'Loading...' : 'View All Volunteers'}
               </button>
               <button className="btn-secondary">
                 Manage Shifts
@@ -76,11 +111,38 @@ function AdminDashboard({
             </div>
           </div>
 
+          {/* Volunteer list */}
+          {volunteers.length > 0 && (
+            <div className="volunteer-list">
+              <h4>Volunteers ({volunteers.length})</h4>
+              <div className="volunteer-table">
+                <div className="volunteer-header">
+                  <div className="vol-col name">Name</div>
+                  <div className="vol-col email">Email</div>
+                  <div className="vol-col hours">Hours</div>
+                  <div className="vol-col shifts">Active Shifts</div>
+                </div>
+                {volunteers.map(v => (
+                  <div key={v.user_id} className="volunteer-row">
+                    <div className="vol-col name">
+                      {v.first_name ?? ''} {v.last_name ?? ''}
+                    </div>
+                    <div className="vol-col email">{v.email ?? ''}</div>
+                    <div className="vol-col hours">{v.hours_volunteered ?? 0}</div>
+                    <div className="vol-col shifts">
+                      {(v.active_shifts as string[] ?? []).length}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Quick admin stats cards */}
           <div className="quick-stats-grid">
             <div className="quick-stat-card">
               <h5>Total Registered Users</h5>
-              <p className="stat-number">--</p>
+              <p className="stat-number">{volunteers.length}</p>
             </div>
             <div className="quick-stat-card">
               <h5>Hours Volunteered</h5>

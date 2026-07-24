@@ -1294,6 +1294,61 @@ button { font-family: var(--font-body); }
   margin-top: auto;
 }
 
+/* ============ Volunteer List Styles ============ */
+.volunteer-list {
+  background: var(--hc-white);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 20px;
+}
+.volunteer-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 12px;
+}
+.volunteer-header,
+.volunteer-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+}
+.volunteer-header {
+  background: var(--hc-green-light);
+  color: var(--hc-green-dark);
+  font-weight: 600;
+  border: none;
+}
+.volunteer-row {
+  background: var(--hc-white);
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.volunteer-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.vol-col {
+  color: var(--hc-text-main);
+}
+.vol-col.name {
+  font-weight: 600;
+  color: var(--hc-green-dark);
+}
+.vol-col.email {
+  color: var(--hc-text-muted);
+}
+.vol-col.hours,
+.vol-col.shifts {
+  text-align: center;
+  font-weight: 600;
+  color: var(--hc-green-primary);
+}
+
 .footer-inner {
   max-width: 980px;
   margin: 0 auto;
