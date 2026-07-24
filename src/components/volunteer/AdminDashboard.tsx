@@ -35,12 +35,15 @@ function AdminDashboard({
 }: AdminDashboardProps) {
   const [volunteers, setVolunteers] = useState<any[]>([])
   const [volunteersLoading, setVolunteersLoading] = useState(false)
+  const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
+  const [adminsLoading, setAdminsLoading] = useState(true)
   const [lastClickTime, setLastClickTime] = useState<string | null>(null)
 
   const handleClickVolunteers = async () => {
     setLastClickTime(new Date().toLocaleTimeString())
     await fetchVolunteers()
-  } 
+    await fetchAdmins()
+  }
 
   const fetchVolunteers = async () => {
     setVolunteersLoading(true)
@@ -60,9 +63,59 @@ function AdminDashboard({
     }
   }
 
-  // Fetch volunteers on mount
+  const fetchAdmins = async () => {
+    setAdminsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('admins')
+        .select('id, user_id')
+      if (error) throw error
+      console.log('Fetched admins:', data)
+      setAdmins(data)
+    } catch (err) {
+      console.error('Error fetching admins:', err)
+      alert('Failed to load admins: ' + err)
+    } finally {
+      setAdminsLoading(false)
+    }
+  }
+
+  const makeAdmin = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('admins')
+        .insert({ user_id: userId })
+      if (error) throw error
+      await fetchAdmins()
+      alert('User is now an admin')
+    } catch (err) {
+      console.error('Error making admin:', err)
+      alert('Failed to make admin: ' + err)
+    }
+  }
+
+  const removeAdmin = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to remove admin privileges from this user?')) {
+      return
+    }
+    try {
+      const { error } = await supabase
+        .from('admins')
+        .delete()
+        .eq('user_id', userId)
+      if (error) throw error
+      await fetchAdmins()
+      alert('Admin privileges removed')
+    } catch (err) {
+      console.error('Error removing admin:', err)
+      alert('Failed to remove admin: ' + err)
+    }
+  }
+
+  // Fetch volunteers and admins on mount
   useEffect(() => {
     fetchVolunteers()
+    fetchAdmins()
   }, [])
 
   return (
@@ -85,7 +138,7 @@ function AdminDashboard({
                 <span className="stat-label">Active Shifts</span>
               </div>
               <div className="stat-card">
-                <span className="stat-value">--</span>
+                <span className="stat-value">{admins.length}</span>
                 <span className="stat-label">Admins</span>
               </div>
             </div>
@@ -98,8 +151,8 @@ function AdminDashboard({
               <button onClick={browser.refreshAdminStats} className="btn-primary" disabled={browser.loading || browser.isRefreshSpinning}>
                 {browser.isRefreshSpinning ? 'Refreshing...' : 'Refresh Statistics'}
               </button>
-              <button onClick={handleClickVolunteers} className="btn-secondary" disabled={volunteersLoading}>
-                {volunteersLoading ? 'Loading...' : 'View All Volunteers'}
+              <button onClick={handleClickVolunteers} className="btn-secondary" disabled={volunteersLoading || adminsLoading}>
+                {volunteersLoading || adminsLoading ? 'Loading...' : 'View All Volunteers'}
               </button>
               <button className="btn-secondary">
                 Manage Shifts
@@ -110,7 +163,7 @@ function AdminDashboard({
             </div>
           </div>
 
-          {/* Volunteer list */}
+          {/* Volunteer list with admin actions */}
           {volunteers.length > 0 && (
             <div className="volunteer-list">
               <h4>Volunteers ({volunteers.length})</h4>
@@ -118,21 +171,43 @@ function AdminDashboard({
                 <div className="volunteer-header">
                   <div className="vol-col name">Name</div>
                   <div className="vol-col email">Email</div>
-                  <div className="vol-col hours">Hours</div>
-                  <div className="vol-col shifts">Active Shifts</div>
+                  <div className="vol-col age">Age</div>
+                  <div className="vol-col action">Admin Actions</div>
                 </div>
-                {volunteers.map(v => (
-                  <div key={v.user_id} className="volunteer-row">
-                    <div className="vol-col name">
-                      {v.first_name ?? ''} {v.last_name ?? ''}
+                {volunteers.map(v => {
+                  const isAdmin = admins.some(a => a.user_id === v.user_id)
+                  // calculate age from birthday
+                  let age = 0
+                  if (v.birthday) {
+                    const birth = new Date(v.birthday)
+                    const today = new Date()
+                    age = today.getFullYear() - birth.getFullYear()
+                    const m = today.getMonth() - birth.getMonth()
+                    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                      age--
+                    }
+                  }
+                  return (
+                    <div key={v.user_id} className="volunteer-row">
+                      <div className="vol-col name">
+                        {v.first_name ?? ''} {v.last_name ?? ''}
+                      </div>
+                      <div className="vol-col email">{v.email ?? ''}</div>
+                      <div className="vol-col age">{age}</div>
+                      <div className="vol-col action">
+                        {isAdmin ? (
+                          <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
+                            Remove Admin
+                          </button>
+                        ) : (
+                          <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
+                            Make Admin
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="vol-col email">{v.email ?? ''}</div>
-                    <div className="vol-col hours">{v.hours_volunteered ?? 0}</div>
-                    <div className="vol-col shifts">
-                      {(v.active_shifts as string[] ?? []).length}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
