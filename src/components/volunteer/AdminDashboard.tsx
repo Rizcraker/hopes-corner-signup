@@ -44,6 +44,7 @@ function AdminDashboard({
   const [adminsLoading, setAdminsLoading] = useState(true)
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [shiftSearchTerm, setShiftSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'stats'>('volunteers')
 
   // Create filtered volunteers based on search term
@@ -56,6 +57,15 @@ function AdminDashboard({
        v.email?.toLowerCase().includes(term))
     )
   }, [volunteers, searchTerm])
+
+  // Create filtered shifts based on search term
+  const filteredShifts = useMemo(() => {
+    if (!shiftSearchTerm.trim()) return browser.shifts
+    const term = shiftSearchTerm.toLowerCase().trim()
+    return browser.shifts.filter(shift =>
+      shift.role.toLowerCase().includes(term)
+    )
+  }, [browser.shifts, shiftSearchTerm])
 
   const handleClickVolunteers = async () => {
     await fetchVolunteers()
@@ -332,8 +342,17 @@ function AdminDashboard({
           {/* Shift manager - shown when shifts tab is active */}
           {activeTab === 'shifts' && (
             <div className="admin-shift-manager">
+              <div className="admin-search">
+                <input
+                  type="text"
+                  placeholder="Search shifts by title..."
+                  value={shiftSearchTerm}
+                  onChange={(e) => setShiftSearchTerm(e.target.value)}
+                  style={{ marginTop: '1rem', padding: '0.5rem', width: '100%', maxWidth: '300px' }}
+                />
+              </div>
               <AdminShiftManager
-                shifts={browser.shifts}
+                shifts={filteredShifts}
                 setShifts={browser.setShifts}
                 loading={browser.loading}
                 fetchShifts={browser.fetchShifts}
