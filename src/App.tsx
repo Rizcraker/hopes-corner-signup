@@ -1,7 +1,6 @@
 import './App.css'
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { supabase } from './lib/supabaseClient'
 import { useVolunteerAuth } from './hooks/useVolunteerAuth'
 import type { AuthDataBridge } from './hooks/useVolunteerAuth'
 import { useUserInfo } from './hooks/useUserInfo'
@@ -131,6 +130,7 @@ function App() {
                 <AdminPage
                   getUserName={auth.getUserName}
                   shiftsApi={shiftsApi}
+                  userInfoApi={userInfoApi}
                 />
               ) : (
                 <Navigate to="/" replace />

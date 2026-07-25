@@ -95,7 +95,9 @@ Profile fields are stored in `user_info` table, but registration sends them to `
 
 ### 8. Admin Features
 Admins have access to an admin dashboard (`/admin`) where they can:
-- View volunteer statistics and lists
+- View volunteer statistics and lists (name, email from user_info table, age calculated from birthday)
+- Click on any volunteer to expand/collapse detailed information including all registration fields, hours volunteered, and upcoming shifts
+- Remove individual shifts from volunteers' schedules
 - Manage shifts (via the ShiftBrowser component)
 - Promote volunteers to admin status and remove admin privileges
 - All admin actions are logged and monitored for security
@@ -135,6 +137,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
   - `user_id` (foreign key to auth.users)
   - `hours_volunteered` (number)
   - `active_shifts` (JSON array of shift IDs)
+  - `email` (string)
   - Profile fields (first_name, last_name, birthday, phone_number, etc.)
 - `public.shifts`: Shift listings with:
   - `title` (text)

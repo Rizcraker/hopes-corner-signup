@@ -1,7 +1,8 @@
 import type { Shift } from '../../types/shift'
+import type { UserInfo } from '../../types/userInfo'
 import ShiftBrowser from '../shifts/ShiftBrowser'
 import { supabase } from '../../lib/supabaseClient'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useImperativeHandle, useRef, forwardRef } from 'react'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -24,6 +25,8 @@ interface AdminDashboardProps {
   shiftsByMonth: Record<string, Shift[]>
   onSignUp: (shift: Shift) => Promise<void>
   // Admin-specific functions
+  removeActiveShift: (shiftDescription: string) => Promise<void>
+  refreshData: () => void
   refreshAdminStats?: () => void
   refreshUsers?: () => void
 }
@@ -31,16 +34,17 @@ interface AdminDashboardProps {
 function AdminDashboard({
   getUserName,
   onSignUp,
+  removeActiveShift,
+  refreshData,
   ...browser
 }: AdminDashboardProps) {
-  const [volunteers, setVolunteers] = useState<any[]>([])
+  const [volunteers, setVolunteers] = useState<UserInfo[]>([])
   const [volunteersLoading, setVolunteersLoading] = useState(false)
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
   const [adminsLoading, setAdminsLoading] = useState(true)
-  const [lastClickTime, setLastClickTime] = useState<string | null>(null)
+  const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
 
   const handleClickVolunteers = async () => {
-    setLastClickTime(new Date().toLocaleTimeString())
     await fetchVolunteers()
     await fetchAdmins()
   }
@@ -177,35 +181,115 @@ function AdminDashboard({
                 {volunteers.map(v => {
                   const isAdmin = admins.some(a => a.user_id === v.user_id)
                   // calculate age from birthday
-                  let age = 0
+                  let ageDisplay: string | number = 'N/A'
                   if (v.birthday) {
                     const birth = new Date(v.birthday)
                     const today = new Date()
-                    age = today.getFullYear() - birth.getFullYear()
+                    let age = today.getFullYear() - birth.getFullYear()
                     const m = today.getMonth() - birth.getMonth()
                     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
                       age--
                     }
+                    ageDisplay = age
                   }
+                  const isExpanded = expandedVolunteerId === v.user_id
                   return (
-                    <div key={v.user_id} className="volunteer-row">
-                      <div className="vol-col name">
-                        {v.first_name ?? ''} {v.last_name ?? ''}
+                    <>
+                      <div
+                        key={v.user_id}
+                        className="volunteer-row"
+                        onClick={() => setExpandedVolunteerId(isExpanded ? null : v.user_id)}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div className="vol-col name">
+                          {v.first_name ?? ''} {v.last_name ?? ''}
+                        </div>
+                        <div className="vol-col email">{v.email ?? ''}</div>
+                        <div className="vol-col age">{ageDisplay}</div>
+                        <div className="vol-col action">
+                          {isAdmin ? (
+                            <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
+                              Remove Admin
+                            </button>
+                          ) : (
+                            <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
+                              Make Admin
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="vol-col email">{v.email ?? ''}</div>
-                      <div className="vol-col age">{age}</div>
-                      <div className="vol-col action">
-                        {isAdmin ? (
-                          <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
-                            Remove Admin
-                          </button>
-                        ) : (
-                          <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
-                            Make Admin
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                      {isExpanded && (
+                        <div className="volunteer-details" style={{
+                          padding: '1rem',
+                          backgroundColor: '#f9f9f9',
+                          borderTop: '1px solid #eee',
+                          margin: '0 -1rem',
+                        }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                            <div>
+                              <strong>First Name:</strong> {v.first_name ?? ''}
+                            </div>
+                            <div>
+                              <strong>Last Name:</strong> {v.last_name ?? ''}
+                            </div>
+                            <div>
+                              <strong>Email:</strong> {v.email ?? ''}
+                            </div>
+                            <div>
+                              <strong>Birthday:</strong> {v.birthday ? new Date(v.birthday).toLocaleDateString() : 'N/A'}
+                            </div>
+                            <div>
+                              <strong>Phone Number:</strong> {v.phone_number ?? ''}
+                            </div>
+                            <div>
+                              <strong>Emergency Contact Name:</strong> {v.emergency_contact_name ?? ''}
+                            </div>
+                            <div>
+                              <strong>Emergency Contact Phone:</strong> {v.emergency_contact_phone ?? ''}
+                            </div>
+                            <div>
+                              <strong>Employer:</strong> {v.employer ?? ''}
+                            </div>
+                            <div>
+                              <strong>Street Address:</strong> {v.street_address ?? ''}
+                            </div>
+                            <div>
+                              <strong>City:</strong> {v.city ?? ''}
+                            </div>
+                            <div>
+                              <strong>ZIP Code:</strong> {v.zip_code ?? ''}
+                            </div>
+                            <div>
+                              <strong>Organization:</strong> {v.organization ?? ''}
+                            </div>
+                            <div>
+                              <strong>Hours Volunteered:</strong> {v.hours_volunteered}
+                            </div>
+                            <div>
+                              <strong>Upcoming Shifts:</strong>
+                              <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
+                                {v.active_shifts?.map((shift, idx) => (
+                                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{shift}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent triggering the row click
+                                        removeActiveShift(shift);
+                                        fetchVolunteers(); // Refresh volunteers data to show updated shifts
+                                      }}
+                                      className="btn-danger"
+                                      style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+                                    >
+                                      Remove
+                                    </button>
+                                  </li>
+                                )) ?? <li>None</li>}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )
                 })}
               </div>

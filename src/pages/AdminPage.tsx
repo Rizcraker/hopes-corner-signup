@@ -1,4 +1,5 @@
 import type { Shift } from '../types/shift'
+import type { UserInfo } from '../types/userInfo'
 import AdminDashboard from '../components/volunteer/AdminDashboard'
 
 interface AdminPageProps {
@@ -23,12 +24,28 @@ interface AdminPageProps {
     shiftsByDate: Shift[]
     shiftsByMonth: Record<string, Shift[]>
   }
+  userInfoApi: {
+    userInfo: UserInfo | null
+    setUserInfo: React.Dispatch<React.SetStateAction<UserInfo | null>>
+    fetchUserInfo: (session: any) => Promise<void>
+    updateActiveShifts: (shift: Shift) => Promise<void>
+    removeActiveShift: (shiftDescription: string) => Promise<void>
+    clearUserInfo: () => void
+  }
 }
 
 function AdminPage({
   getUserName,
   shiftsApi,
+  userInfoApi,
 }: AdminPageProps) {
+  const refreshData = async () => {
+    // This would ideally trigger a refresh in the child component
+    // For now, we'll just log - in a more complex implementation,
+    // this could trigger a refetch or state update
+    console.log('Refreshing data...')
+  }
+
   return (
     <AdminDashboard
       getUserName={getUserName}
@@ -49,6 +66,8 @@ function AdminPage({
       jobGroupNames={shiftsApi.jobGroupNames}
       shiftsByDate={shiftsApi.shiftsByDate}
       shiftsByMonth={shiftsApi.shiftsByMonth}
+      removeActiveShift={userInfoApi.removeActiveShift}
+      refreshData={refreshData}
       refreshAdminStats={() => {
         // Add admin-specific refresh function here
         console.log('Refreshing admin stats...')

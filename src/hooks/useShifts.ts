@@ -161,6 +161,7 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
       setShifts(generateSampleShifts())
       if (!userInfo) {
         setUserInfo({
+          user_id: 'bypass-user-id',
           hours_volunteered: 8,
           active_shifts: [],
           first_name: '',
@@ -173,7 +174,8 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
           street_address: '',
           city: '',
           zip_code: '',
-          organization: ''
+          organization: '',
+          email: 'bypass@example.com'
         })
       }
     }

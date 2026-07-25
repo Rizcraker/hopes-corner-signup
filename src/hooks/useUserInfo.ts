@@ -19,7 +19,7 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
     try {
       const { data, error } = await supabase
         .from('user_info')
-        .select('hours_volunteered, active_shifts, first_name, last_name, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, organization')
+        .select('user_id, hours_volunteered, active_shifts, first_name, last_name, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, organization, email')
         .eq('user_id', session.user.id)
         .single()
 
@@ -30,6 +30,7 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         if (error.code === 'PGRST116') {
           const meta = session.user.user_metadata ?? {}
           const profileRow = {
+            user_id: session.user.id,
             hours_volunteered: 0,
             active_shifts: [] as string[],
             first_name: meta.first_name ?? '',
@@ -42,11 +43,12 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
             street_address: meta.street_address ?? '',
             city: meta.city ?? '',
             zip_code: meta.zip_code ?? '',
-            organization: meta.organization ?? ''
+            organization: meta.organization ?? '',
+            email: meta.email ?? ''
           }
           const { error: insertError } = await supabase
             .from('user_info')
-            .insert({ user_id: session.user.id, ...profileRow })
+            .insert(profileRow)
           if (insertError) throw insertError
           setUserInfo(profileRow)
         } else {
@@ -60,6 +62,7 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
             : []
 
         setUserInfo({
+          user_id: data.user_id,
           hours_volunteered: data.hours_volunteered,
           active_shifts: parsedActiveShifts,
           first_name: data.first_name ?? '',
@@ -72,12 +75,14 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
           street_address: data.street_address ?? '',
           city: data.city ?? '',
           zip_code: data.zip_code ?? '',
-          organization: data.organization ?? ''
+          organization: data.organization ?? '',
+          email: data.email ?? ''
         })
       }
     } catch (error) {
       console.error('Error fetching user info:', error)
       setUserInfo({
+        user_id: '',
         hours_volunteered: 0,
         active_shifts: [],
         first_name: '',
@@ -90,7 +95,8 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         street_address: '',
         city: '',
         zip_code: '',
-        organization: ''
+        organization: '',
+        email: ''
       })
     }
   }

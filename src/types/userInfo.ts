@@ -1,4 +1,5 @@
 export interface UserInfo {
+  user_id: string;
   hours_volunteered: number;
   active_shifts: string[];
   first_name: string;
@@ -12,4 +13,5 @@ export interface UserInfo {
   city: string;
   zip_code: string;
   organization: string;
+  email: string;
 }
