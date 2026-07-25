@@ -332,7 +332,6 @@ function AdminDashboard({
           {/* Shift manager - shown when shifts tab is active */}
           {activeTab === 'shifts' && (
             <div className="admin-shift-manager">
-              <h3>Manage Shifts</h3>
               <AdminShiftManager
                 shifts={browser.shifts}
                 setShifts={browser.setShifts}
