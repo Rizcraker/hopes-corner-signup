@@ -94,12 +94,10 @@ When `isBypassActive` is true:
 Profile fields are stored in `user_info` table, but registration sends them to `auth.user_metadata` to work around RLS restrictions before email confirmation.
 
 ### 8. Admin Features
-Admins have access to an admin dashboard (`/admin`) where they can:
-- View volunteer statistics and lists (name, email from user_info table, age calculated from birthday)
-- Click on any volunteer to expand/collapse detailed information including all registration fields, hours volunteered, and upcoming shifts
-- Remove individual shifts from volunteers' schedules
-- Manage shifts (via the ShiftBrowser component)
-- Promote volunteers to admin status and remove admin privileges
+Admins have access to an admin dashboard (`/admin`) with a tabbed interface where they can:
+- **Volunteers Tab** (default): View volunteer statistics and lists (name, email from user_info table, age calculated from birthday), search for volunteers by name or email, click on any volunteer to expand/collapse detailed information including all registration fields, hours volunteered, and upcoming shifts, and remove individual shifts from volunteers' schedules
+- **Shifts Tab**: Create, edit, and delete shifts via the AdminShiftManager component
+- **Admin Management**: Promote volunteers to admin status and remove admin privileges
 - All admin actions are logged and monitored for security
 
 ## Common Commands

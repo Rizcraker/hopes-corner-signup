@@ -1,8 +1,8 @@
 import type { Shift } from '../../types/shift'
 import type { UserInfo } from '../../types/userInfo'
-import ShiftBrowser from '../shifts/ShiftBrowser'
+import AdminShiftManager from './AdminShiftManager'
 import { supabase } from '../../lib/supabaseClient'
-import { useState, useEffect, useImperativeHandle, useRef, forwardRef } from 'react'
+import { useState, useEffect, useImperativeHandle, useRef, forwardRef, useMemo } from 'react'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -43,6 +43,19 @@ function AdminDashboard({
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
   const [adminsLoading, setAdminsLoading] = useState(true)
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'stats'>('volunteers')
+
+  // Create filtered volunteers based on search term
+  const filteredVolunteers = useMemo(() => {
+    if (!searchTerm.trim()) return volunteers
+    const term = searchTerm.toLowerCase().trim()
+    return volunteers.filter(v =>
+      (v.first_name?.toLowerCase().includes(term) ||
+       v.last_name?.toLowerCase().includes(term) ||
+       v.email?.toLowerCase().includes(term))
+    )
+  }, [volunteers, searchTerm])
 
   const handleClickVolunteers = async () => {
     await fetchVolunteers()
@@ -155,10 +168,13 @@ function AdminDashboard({
               <button onClick={browser.refreshAdminStats} className="btn-primary" disabled={browser.loading || browser.isRefreshSpinning}>
                 {browser.isRefreshSpinning ? 'Refreshing...' : 'Refresh Statistics'}
               </button>
-              <button onClick={handleClickVolunteers} className="btn-secondary" disabled={volunteersLoading || adminsLoading}>
+              <button onClick={() => {
+                  setActiveTab('volunteers');
+                  handleClickVolunteers();
+              }} className="btn-secondary" disabled={volunteersLoading || adminsLoading}>
                 {volunteersLoading || adminsLoading ? 'Loading...' : 'View All Volunteers'}
               </button>
-              <button className="btn-secondary">
+              <button className="btn-secondary" onClick={() => setActiveTab('shifts')}>
                 Manage Shifts
               </button>
               <button className="btn-secondary">
@@ -167,150 +183,166 @@ function AdminDashboard({
             </div>
           </div>
 
-          {/* Volunteer list with admin actions */}
-          {volunteers.length > 0 && (
-            <div className="volunteer-list">
-              <h4>Volunteers ({volunteers.length})</h4>
-              <div className="volunteer-table">
-                <div className="volunteer-header">
-                  <div className="vol-col name">Name</div>
-                  <div className="vol-col email">Email</div>
-                  <div className="vol-col age">Age</div>
-                  <div className="vol-col action">Admin Actions</div>
-                </div>
-                {volunteers.map(v => {
-                  const isAdmin = admins.some(a => a.user_id === v.user_id)
-                  // calculate age from birthday
-                  let ageDisplay: string | number = 'N/A'
-                  if (v.birthday) {
-                    const birth = new Date(v.birthday)
-                    const today = new Date()
-                    let age = today.getFullYear() - birth.getFullYear()
-                    const m = today.getMonth() - birth.getMonth()
-                    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-                      age--
-                    }
-                    ageDisplay = age
-                  }
-                  const isExpanded = expandedVolunteerId === v.user_id
-                  return (
-                    <>
-                      <div
-                        key={v.user_id}
-                        className="volunteer-row"
-                        onClick={() => setExpandedVolunteerId(isExpanded ? null : v.user_id)}
-                        style={{ cursor: 'pointer', userSelect: 'none' }}
-                      >
-                        <div className="vol-col name">
-                          {v.first_name ?? ''} {v.last_name ?? ''}
-                        </div>
-                        <div className="vol-col email">{v.email ?? ''}</div>
-                        <div className="vol-col age">{ageDisplay}</div>
-                        <div className="vol-col action">
-                          {isAdmin ? (
-                            <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
-                              Remove Admin
-                            </button>
-                          ) : (
-                            <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
-                              Make Admin
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <div className="volunteer-details" style={{
-                          padding: '1rem',
-                          backgroundColor: '#f9f9f9',
-                          borderTop: '1px solid #eee',
-                          margin: '0 -1rem',
-                        }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                            <div>
-                              <strong>First Name:</strong> {v.first_name ?? ''}
+          {/* Volunteer list with admin actions - shown when volunteers tab is active */}
+          {activeTab === 'volunteers' && (
+            <div className="volunteer-section">
+              {/* Search volunteers */}
+              <div className="admin-search">
+                <input
+                  type="text"
+                  placeholder="Search volunteers by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ marginTop: '1rem', padding: '0.5rem', width: '100%', maxWidth: '300px' }}
+                />
+              </div>
+              {filteredVolunteers.length > 0 && (
+                <div className="volunteer-list">
+                  <h4>Volunteers ({filteredVolunteers.length})</h4>
+                  <div className="volunteer-table">
+                    <div className="volunteer-header">
+                      <div className="vol-col name">Name</div>
+                      <div className="vol-col email">Email</div>
+                      <div className="vol-col age">Age</div>
+                      <div className="vol-col action">Admin Actions</div>
+                    </div>
+                    {filteredVolunteers.map(v => {
+                      const isAdmin = admins.some(a => a.user_id === v.user_id)
+                      // calculate age from birthday
+                      let ageDisplay: string | number = 'N/A'
+                      if (v.birthday) {
+                        const birth = new Date(v.birthday)
+                        const today = new Date()
+                        let age = today.getFullYear() - birth.getFullYear()
+                        const m = today.getMonth() - birth.getMonth()
+                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                          age--
+                        }
+                        ageDisplay = age
+                      }
+                      const isExpanded = expandedVolunteerId === v.user_id
+                      return (
+                        <>
+                          <div
+                            key={v.user_id}
+                            className="volunteer-row"
+                            onClick={() => setExpandedVolunteerId(isExpanded ? null : v.user_id)}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            <div className="vol-col name">
+                              {v.first_name ?? ''} {v.last_name ?? ''}
                             </div>
-                            <div>
-                              <strong>Last Name:</strong> {v.last_name ?? ''}
-                            </div>
-                            <div>
-                              <strong>Email:</strong> {v.email ?? ''}
-                            </div>
-                            <div>
-                              <strong>Birthday:</strong> {v.birthday ? new Date(v.birthday).toLocaleDateString() : 'N/A'}
-                            </div>
-                            <div>
-                              <strong>Phone Number:</strong> {v.phone_number ?? ''}
-                            </div>
-                            <div>
-                              <strong>Emergency Contact Name:</strong> {v.emergency_contact_name ?? ''}
-                            </div>
-                            <div>
-                              <strong>Emergency Contact Phone:</strong> {v.emergency_contact_phone ?? ''}
-                            </div>
-                            <div>
-                              <strong>Employer:</strong> {v.employer ?? ''}
-                            </div>
-                            <div>
-                              <strong>Street Address:</strong> {v.street_address ?? ''}
-                            </div>
-                            <div>
-                              <strong>City:</strong> {v.city ?? ''}
-                            </div>
-                            <div>
-                              <strong>ZIP Code:</strong> {v.zip_code ?? ''}
-                            </div>
-                            <div>
-                              <strong>Organization:</strong> {v.organization ?? ''}
-                            </div>
-                            <div>
-                              <strong>Hours Volunteered:</strong> {v.hours_volunteered}
-                            </div>
-                            <div>
-                              <strong>Upcoming Shifts:</strong>
-                              <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                                {v.active_shifts?.map((shift, idx) => (
-                                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>{shift}</span>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the row click
-                                        removeActiveShift(shift);
-                                        fetchVolunteers(); // Refresh volunteers data to show updated shifts
-                                      }}
-                                      className="btn-danger"
-                                      style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-                                    >
-                                      Remove
-                                    </button>
-                                  </li>
-                                )) ?? <li>None</li>}
-                              </ul>
+                            <div className="vol-col email">{v.email ?? ''}</div>
+                            <div className="vol-col age">{ageDisplay}</div>
+                            <div className="vol-col action">
+                              {isAdmin ? (
+                                <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
+                                  Remove Admin
+                                </button>
+                              ) : (
+                                <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
+                                  Make Admin
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </>
-                  )
-                })}
-              </div>
+                          {isExpanded && (
+                            <div className="volunteer-details" style={{
+                              padding: '1rem',
+                              backgroundColor: '#f9f9f9',
+                              borderTop: '1px solid #eee',
+                              margin: '0 -1rem',
+                            }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                                <div>
+                                  <strong>First Name:</strong> {v.first_name ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Last Name:</strong> {v.last_name ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Email:</strong> {v.email ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Birthday:</strong> {v.birthday ? new Date(v.birthday).toLocaleDateString() : 'N/A'}
+                                </div>
+                                <div>
+                                  <strong>Phone Number:</strong> {v.phone_number ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Emergency Contact Name:</strong> {v.emergency_contact_name ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Emergency Contact Phone:</strong> {v.emergency_contact_phone ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Employer:</strong> {v.employer ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Street Address:</strong> {v.street_address ?? ''}
+                                </div>
+                                <div>
+                                  <strong>City:</strong> {v.city ?? ''}
+                                </div>
+                                <div>
+                                  <strong>ZIP Code:</strong> {v.zip_code ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Organization:</strong> {v.organization ?? ''}
+                                </div>
+                                <div>
+                                  <strong>Hours Volunteered:</strong> {v.hours_volunteered}
+                                </div>
+                                <div>
+                                  <strong>Upcoming Shifts:</strong>
+                                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
+                                    {v.active_shifts?.map((shift, idx) => (
+                                      <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>{shift}</span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation(); // Prevent triggering the row click
+                                            removeActiveShift(shift);
+                                            fetchVolunteers(); // Refresh volunteers data to show updated shifts
+                                          }}
+                                          className="btn-danger"
+                                          style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+                                        >
+                                          Remove
+                                        </button>
+                                      </li>
+                                    )) ?? <li>None</li>}
+                                  </ul>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              {filteredVolunteers.length === 0 && (
+                <p>No volunteers found matching your search.</p>
+              )}
             </div>
           )}
 
-          {/* Quick admin stats cards */}
-          <div className="quick-stats-grid">
-            <div className="quick-stat-card">
-              <h5>Total Registered Users</h5>
-              <p className="stat-number">{volunteers.length}</p>
+          {/* Shift manager - shown when shifts tab is active */}
+          {activeTab === 'shifts' && (
+            <div className="admin-shift-manager">
+              <h3>Manage Shifts</h3>
+              <AdminShiftManager
+                shifts={browser.shifts}
+                setShifts={browser.setShifts}
+                loading={browser.loading}
+                fetchShifts={browser.fetchShifts}
+                handleRefreshShifts={browser.handleRefreshShifts}
+                isRefreshSpinning={browser.isRefreshSpinning}
+              />
             </div>
-            <div className="quick-stat-card">
-              <h5>Hours Volunteered</h5>
-              <p className="stat-number">--</p>
-            </div>
-            <div className="quick-stat-card">
-              <h5>Upcoming Shifts</h5>
-              <p className="stat-number">--</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -337,12 +369,6 @@ function AdminDashboard({
             <p>Access comprehensive volunteer statistics and analytics</p>
           </div>
         </div>
-      </div>
-
-      {/* Full Shift Browser for Admins */}
-      <div className="admin-shift-browser">
-        <h3>Volunteer Shift Management</h3>
-        <ShiftBrowser {...browser} onSignUp={onSignUp} />
       </div>
     </div>
   )
