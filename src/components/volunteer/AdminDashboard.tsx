@@ -3,6 +3,8 @@ import type { UserInfo } from '../../types/userInfo'
 import AdminJobManager from './AdminJobManager'
 import { supabase } from '../../lib/supabaseClient'
 import { useState, useEffect, useMemo } from 'react'
+import { useHours } from '../../hooks/useHours'
+import type { PendingRequest } from '../../hooks/useHours'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -46,10 +48,24 @@ function AdminDashboard({
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'stats'>('volunteers')
+  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'admins' | 'requests'>('volunteers')
   const [confirmAction, setConfirmAction] = useState<{ type: 'make' | 'remove'; userId: string } | null>(null)
-  const [hoursToAdd, setHoursToAdd] = useState('')
   const [selectedVolunteerForHours, setSelectedVolunteerForHours] = useState<string | null>(null)
+  const [hoursDelta, setHoursDelta] = useState<string>('1')
+  const [hoursNote, setHoursNote] = useState('')
+  const [adminSearch, setAdminSearch] = useState('')
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
+
+  const hoursApi = useHours()
+
+  // Supabase errors are objects — pull out something human-readable.
+  const errMsg = (err: any) =>
+    err?.message || err?.details || err?.hint || (typeof err === 'string' ? err : JSON.stringify(err))
+
+  const loadPending = async () => {
+    setPendingRequests(await hoursApi.fetchPending())
+  }
+  useEffect(() => { loadPending() }, [])
 
   // Create filtered volunteers based on search term
   const filteredVolunteers = useMemo(() => {
@@ -149,35 +165,63 @@ function AdminDashboard({
 
   const handleAddHoursClick = (userId: string) => {
     setSelectedVolunteerForHours(userId)
-    setHoursToAdd('')
+    setHoursDelta('1')
+    setHoursNote('')
   }
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setHoursToAdd(e.target.value)
+  const stepHours = (by: number) => {
+    setHoursDelta(prev => {
+      const n = (parseFloat(prev) || 0) + by
+      return String(Math.round(n * 10) / 10)
+    })
   }
 
   const handleSubmitHours = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedVolunteerForHours || !hoursToAdd || parseFloat(hoursToAdd) <= 0) {
-      alert('Please enter a valid number of hours')
+    const delta = parseFloat(hoursDelta)
+    if (!selectedVolunteerForHours || !delta || isNaN(delta)) {
+      alert('Enter a non-zero number of hours (negative to subtract).')
       return
     }
-
     try {
-      await addHoursVolunteered(selectedVolunteerForHours, parseFloat(hoursToAdd))
+      const targetId = selectedVolunteerForHours
+      const newTotal = await hoursApi.logHours(targetId, delta, hoursNote.trim())
+      // Update the row straight from the authoritative returned total.
+      setVolunteers(prev => prev.map(v => v.user_id === targetId ? { ...v, hours_volunteered: newTotal } : v))
       setSelectedVolunteerForHours(null)
-      setHoursToAdd('')
-      // Refresh volunteers data to show updated hours
-      await fetchVolunteers()
+      setHoursDelta('1')
+      setHoursNote('')
     } catch (err) {
-      console.error('Error adding hours:', err)
-      alert('Failed to add hours: ' + err)
+      console.error('Error changing hours:', err)
+      alert('Failed to change hours: ' + errMsg(err))
     }
   }
 
   const handleCancelHours = () => {
     setSelectedVolunteerForHours(null)
-    setHoursToAdd('')
+    setHoursDelta('1')
+    setHoursNote('')
+  }
+
+  const handleApprove = async (entry: PendingRequest) => {
+    try {
+      await hoursApi.approveEntry(entry)
+      await loadPending()
+      await fetchVolunteers()
+    } catch (err) {
+      console.error('Error approving request:', err)
+      alert('Failed to approve: ' + errMsg(err))
+    }
+  }
+
+  const handleDeny = async (id: string) => {
+    try {
+      await hoursApi.denyEntry(id)
+      await loadPending()
+    } catch (err) {
+      console.error('Error denying request:', err)
+      alert('Failed to deny: ' + errMsg(err))
+    }
   }
 
   return (
@@ -219,8 +263,12 @@ function AdminDashboard({
               <button className={activeTab === 'shifts' ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveTab('shifts')}>
                 Manage Jobs & Shifts
               </button>
-              <button className="btn-secondary">
+              <button className={activeTab === 'admins' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
                 Manage Admins
+              </button>
+              <button className={activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setActiveTab('requests'); loadPending() }}>
+                Hour Requests
+                {pendingRequests.length > 0 && <span className="req-badge">{pendingRequests.length}</span>}
               </button>
             </div>
           </div>
@@ -281,31 +329,40 @@ function AdminDashboard({
                           </div>
                           {isExpanded && (
                             <div className="vol-detail-panel" onClick={(e) => e.stopPropagation()}>
-                              {/* Hours highlight + inline add-hours control */}
+                              {/* Hours: change/add control (left) + running total (right) */}
                               <div className="vol-hours-bar">
+                                {selectedVolunteerForHours === v.user_id ? (
+                                  <form className="hours-editor" onSubmit={handleSubmitHours}>
+                                    <div className="hours-stepper">
+                                      <button type="button" className="step-btn step-plus" onClick={() => stepHours(1)} aria-label="Increase by 1">+</button>
+                                      <input
+                                        type="number"
+                                        step="0.5"
+                                        value={hoursDelta}
+                                        onChange={(e) => setHoursDelta(e.target.value)}
+                                        aria-label="Hours to change"
+                                        autoFocus
+                                      />
+                                      <button type="button" className="step-btn step-minus" onClick={() => stepHours(-1)} aria-label="Decrease by 1">−</button>
+                                    </div>
+                                    <input
+                                      className="hours-note-input"
+                                      value={hoursNote}
+                                      onChange={(e) => setHoursNote(e.target.value)}
+                                      placeholder="Note (what for) — optional"
+                                    />
+                                    <button type="submit" className="btn-primary btn-sm">Save</button>
+                                    <button type="button" onClick={handleCancelHours} className="btn-secondary btn-sm">Cancel</button>
+                                  </form>
+                                ) : (
+                                  <button onClick={() => handleAddHoursClick(v.user_id)} className="btn-change-hours">
+                                    Change / Add Hours
+                                  </button>
+                                )}
                                 <div className="vol-hours-figure">
                                   <span className="vol-hours-value">{v.hours_volunteered ?? 0}</span>
                                   <span className="vol-hours-label">hours volunteered</span>
                                 </div>
-                                {selectedVolunteerForHours === v.user_id ? (
-                                  <form className="vol-hours-form" onSubmit={handleSubmitHours}>
-                                    <input
-                                      type="number"
-                                      min="0.1"
-                                      step="0.1"
-                                      value={hoursToAdd}
-                                      onChange={handleHoursChange}
-                                      placeholder="Hours"
-                                      autoFocus
-                                    />
-                                    <button type="submit" className="btn-primary">Save</button>
-                                    <button type="button" onClick={handleCancelHours} className="btn-secondary">Cancel</button>
-                                  </form>
-                                ) : (
-                                  <button onClick={() => handleAddHoursClick(v.user_id)} className="btn-accent">
-                                    + Add hours
-                                  </button>
-                                )}
                               </div>
 
                               {/* Profile fields */}
@@ -356,6 +413,93 @@ function AdminDashboard({
                 loading={browser.loading}
                 fetchShifts={browser.fetchShifts}
               />
+            </div>
+          )}
+
+          {/* Manage Admins tab */}
+          {activeTab === 'admins' && (
+            <div className="admin-panel-section">
+              <h4>Current Admins ({admins.length})</h4>
+              <div className="admin-chip-grid">
+                {admins.map(a => {
+                  const info = volunteers.find(v => v.user_id === a.user_id)
+                  const name = info ? `${info.first_name ?? ''} ${info.last_name ?? ''}`.trim() : a.user_id.slice(0, 8)
+                  return (
+                    <div key={a.user_id} className="admin-chip">
+                      <div className="admin-chip-info">
+                        <div className="admin-chip-name">🛡️ {name || 'Unknown'}</div>
+                        {info?.email && <div className="admin-chip-email">{info.email}</div>}
+                      </div>
+                      <button className="btn-danger btn-sm" onClick={() => handleRemoveAdminClick(a.user_id)}>Remove</button>
+                    </div>
+                  )
+                })}
+                {admins.length === 0 && <p className="note-text">No admins yet.</p>}
+              </div>
+
+              <h4 style={{ marginTop: '1.75rem' }}>Promote a volunteer</h4>
+              <div className="admin-search">
+                <div className="form-group">
+                  <input
+                    type="text"
+                    placeholder="Search volunteers to promote…"
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="promote-list">
+                {volunteers.length === 0 && <p className="note-text">Loading volunteers…</p>}
+                {volunteers
+                  .filter(v => !admins.some(a => a.user_id === v.user_id))
+                  .filter(v => {
+                    const t = adminSearch.toLowerCase().trim()
+                    return !t || `${v.first_name ?? ''} ${v.last_name ?? ''} ${v.email ?? ''}`.toLowerCase().includes(t)
+                  })
+                  .slice(0, 25)
+                  .map(v => (
+                    <div key={v.user_id} className="promote-row">
+                      <div className="promote-info">
+                        <div className="promote-name">{`${v.first_name ?? ''} ${v.last_name ?? ''}`.trim() || '—'}</div>
+                        <div className="promote-email">{v.email}</div>
+                      </div>
+                      <button className="btn-secondary btn-sm" onClick={() => handleMakeAdminClick(v.user_id)}>Make Admin</button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hour Requests tab */}
+          {activeTab === 'requests' && (
+            <div className="admin-panel-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <h4 style={{ margin: 0 }}>Pending Hour Requests ({pendingRequests.length})</h4>
+                <button className="btn-secondary btn-sm" onClick={loadPending}>Refresh</button>
+              </div>
+              {pendingRequests.length === 0 ? (
+                <p className="note-text" style={{ marginTop: '1rem' }}>No pending requests right now. 🎉</p>
+              ) : (
+                <div className="request-list">
+                  {pendingRequests.map(r => (
+                    <div key={r.id} className="request-card">
+                      <div className="request-main">
+                        <div className="request-head">
+                          <span className="request-name">{r.display_name}</span>
+                          <span className="request-hours">+{r.hours} hrs</span>
+                        </div>
+                        {r.email && <div className="request-email">{r.email}</div>}
+                        {r.reason && <div className="request-reason">“{r.reason}”</div>}
+                        <div className="request-date">Requested {new Date(r.created_at).toLocaleDateString()}</div>
+                      </div>
+                      <div className="request-actions">
+                        <button className="btn-primary btn-sm" onClick={() => handleApprove(r)}>Approve</button>
+                        <button className="btn-danger btn-sm" onClick={() => handleDeny(r.id)}>Deny</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

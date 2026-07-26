@@ -6,13 +6,12 @@ import type { UserInfo } from '../types/userInfo'
 
 interface UseUserInfoDeps {
   userSession: any
-  isBypassActive: boolean
   setErrorMessage: Dispatch<SetStateAction<string | null>>
   updateShiftSpotsLeft: (shiftId: string, change: number) => Promise<void>
   shifts: Shift[]
 }
 
-export function useUserInfo({ userSession, isBypassActive, setErrorMessage, updateShiftSpotsLeft, shifts }: UseUserInfoDeps) {
+export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft, shifts }: UseUserInfoDeps) {
   // User info data from user_info supabase tracking matrix
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
@@ -104,23 +103,6 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage, upda
   }
 
   const updateActiveShifts = async (shift: Shift) => {
-    // If inside Developer bypass mode, mimic the state transition gracefully
-    if (isBypassActive) {
-      const shiftDescription = `${shift.role} - ${shift.time}`
-      setUserInfo(prev => {
-        if (!prev) return null
-        const currentShifts = prev.active_shifts
-        if (currentShifts.includes(shiftDescription)) return prev
-        return {
-          ...prev,
-          active_shifts: [...currentShifts, shiftDescription]
-        }
-      })
-      // Update shift spots left via the shift updater (will update state via useShifts hook)
-      await updateShiftSpotsLeft(shift.id, -1)
-      return
-    }
-
     if (!userSession?.user || !userInfo) return
     try {
       setErrorMessage(null)
@@ -154,24 +136,6 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage, upda
   }
 
   const removeActiveShift = async (shiftDescription: string) => {
-    // If inside Developer bypass mode, mimic the state transition gracefully
-    if (isBypassActive) {
-      setUserInfo(prev => {
-        if (!prev) return null
-        return {
-          ...prev,
-          active_shifts: prev.active_shifts.filter(s => s !== shiftDescription)
-        }
-      })
-      // Find the shift by description to get its id for updating spots left
-      const shift = shifts.find(s => `${s.role} - ${s.time}` === shiftDescription)
-      if (shift) {
-        // Update shift spots left via the shift updater (will update state via useShifts hook)
-        await updateShiftSpotsLeft(shift.id, 1)
-      }
-      return
-    }
-
     if (!userSession?.user || !userInfo) return
     try {
       setErrorMessage(null)
@@ -202,22 +166,6 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage, upda
   }
 
   const addHoursVolunteered = async (userId: string, hours: number) => {
-    // If inside Developer bypass mode, update locally
-    if (isBypassActive) {
-      setUserInfo(prev => {
-        if (!prev) return null
-        // Only update if this is the current user
-        if (prev.user_id === userId) {
-          return {
-            ...prev,
-            hours_volunteered: prev.hours_volunteered + hours
-          }
-        }
-        return prev
-      })
-      return
-    }
-
     if (!userSession?.user) return
     try {
       setErrorMessage(null)

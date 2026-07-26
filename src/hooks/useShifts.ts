@@ -1,18 +1,14 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Shift } from '../types/shift'
-import type { UserInfo } from '../types/userInfo'
-import { getOrdinalDay, generateSampleShifts } from '../utils/shiftUtils'
+import { getOrdinalDay } from '../utils/shiftUtils'
 
 interface UseShiftsDeps {
-  isBypassActive: boolean
   setErrorMessage: Dispatch<SetStateAction<string | null>>
-  userInfo: UserInfo | null
-  setUserInfo: Dispatch<SetStateAction<UserInfo | null>>
 }
 
-export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserInfo }: UseShiftsDeps) {
+export function useShifts({ setErrorMessage }: UseShiftsDeps) {
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -44,14 +40,9 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
 
   const handleRefreshShifts = () => {
     setIsRefreshSpinning(true)
-    if (isBypassActive) {
-      setShifts(generateSampleShifts())
+    fetchShifts().finally(() => {
       window.setTimeout(() => setIsRefreshSpinning(false), 500)
-    } else {
-      fetchShifts().finally(() => {
-        window.setTimeout(() => setIsRefreshSpinning(false), 500)
-      })
-    }
+    })
   }
 
   // Group shifts by job title (role), preserving chronological order within each group
@@ -159,49 +150,11 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
     }
   }
 
-  useEffect(() => {
-    if (isBypassActive) {
-      setShifts(generateSampleShifts())
-      if (!userInfo) {
-        setUserInfo({
-          user_id: 'bypass-user-id',
-          hours_volunteered: 8,
-          active_shifts: [],
-          first_name: '',
-          last_name: '',
-          birthday: null,
-          phone_number: '',
-          emergency_contact_name: '',
-          emergency_contact_phone: '',
-          employer: '',
-          street_address: '',
-          city: '',
-          zip_code: '',
-          organization: '',
-          email: 'bypass@example.com'
-        })
-      }
-    }
-  }, [isBypassActive])
-
   const clearShifts = () => {
     setShifts([])
   }
 
   const updateShiftSpotsLeft = async (shiftId: string, change: number) => {
-    // If inside Developer bypass mode, mimic the state transition gracefully
-    if (isBypassActive) {
-      setShifts(prev => {
-        return prev.map(shift => {
-          if (shift.id === shiftId) {
-            return { ...shift, spotsLeft: Math.max(0, shift.spotsLeft + change) }
-          }
-          return shift
-        })
-      })
-      return
-    }
-
     if (!shiftId) return
 
     try {

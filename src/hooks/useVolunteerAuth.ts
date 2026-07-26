@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabaseClient'
 import type { UserInfo } from '../types/userInfo'
 
 // The auth listener and sign-out have to drive the shifts / user-info hooks, but those hooks in
-// turn need isBypassActive and setErrorMessage from this one. Passing them through a ref breaks
-// that cycle: App fills the ref in during render, so it is always populated before the effect
-// below (or any event handler) can run.
+// turn need setErrorMessage from this one. Passing them through a ref breaks that cycle: App fills
+// the ref in during render, so it is always populated before the effect below (or any event
+// handler) can run.
 export interface AuthDataBridge {
   fetchShifts: () => Promise<void>
   fetchUserInfo: (session: any) => Promise<void>
@@ -20,7 +20,6 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   // Auth & Portal State
   const [isSignUp, setIsSignUp] = useState(true)
   const [userSession, setUserSession] = useState<any>(null)
-  const [isBypassActive, setIsBypassActive] = useState(false)
 
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -116,19 +115,13 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
 
   // Admin status check whenever user session changes
   useEffect(() => {
-    if (isBypassActive) {
-      // In bypass mode, treat as non-admin
-      setIsAdmin(false);
-      setAdminLoading(false);
-      return;
-    }
     if (userSession?.user) {
       checkAdminStatus(userSession.user.id);
     } else {
       setIsAdmin(false);
       setAdminLoading(false);
     }
-  }, [userSession?.user?.id, isBypassActive]);
+  }, [userSession?.user?.id]);
 
   const handleAuthSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -207,7 +200,6 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     setUserSession(null)
-    setIsBypassActive(false)
     bridge.current.clearShifts()
     bridge.current.clearUserInfo()
     setInfoMessage(null)
@@ -216,14 +208,12 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   }
 
   const getUserName = () => {
-    if (isBypassActive) return 'Sandbox Dev'
     return userSession?.user?.user_metadata?.first_name || userSession?.user?.email || 'Volunteer'
   }
 
   return {
     isSignUp, setIsSignUp,
     userSession,
-    isBypassActive, setIsBypassActive,
     email, setEmail,
     firstName, setFirstName,
     password, setPassword,

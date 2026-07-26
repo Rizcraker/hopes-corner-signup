@@ -8,7 +8,6 @@ Volunteer shift management web application for Hope's Corner, built with React 1
 - User authentication (sign up with profile fields, sign in, sign out)
 - Volunteer shift browsing and claiming via a custom UI
 - User profile management (hours volunteered, active shifts, contact info)
-- Developer bypass mode for testing without authentication
 - Multi-page navigation with React Router
 - Two-step registration flow with email verification
 - Admin capabilities including managing shifts, volunteers, and other admins
@@ -68,13 +67,7 @@ This runs before the auth listener subscribes, ensuring the bridge is always pop
 - The `user_info` row is **NOT** created during registration (RLS rejects it before email confirmation)
 - Row is created on first confirmed login via `useUserInfo.fetchUserInfo()` when auth row doesn't exist
 
-### 3. Developer Bypass Mode
-When `isBypassActive` is true:
-- Sample shifts are generated instead of fetching from Supabase
-- User profile is mocked locally instead of database operations
-- Useful for UI/UX testing without requiring authentication
-
-### 4. Data Flow
+### 3. Data Flow
 1. **App.tsx** orchestrates all hooks and provides them as props to pages
 2. **useVolunteerAuth** manages authentication state, registration, sign-out, and profile fields
 3. **useUserInfo** fetches/updates user profile in `user_info` table; auto-creates row from auth metadata if missing
@@ -88,7 +81,7 @@ When `isBypassActive` is true:
 ### 6. Date Handling
 - Shifts use JavaScript `Date` objects internally
 - Date formatting utilities convert Supabase ISO timestamps to localized strings
-- Sample shifts in bypass mode use `getOrdinalDay()` for "3rd", "15th" formatting
+- `getOrdinalDay()` formats day numbers as "3rd", "15th" for date labels
 
 ### 7. Profile Fields
 Profile fields are stored in `user_info` table, but registration sends them to `auth.user_metadata` to work around RLS restrictions before email confirmation.
@@ -184,5 +177,4 @@ Add test script to package.json: `"test": "vitest"`
 - The Supabase client is initialized in `src/lib/supabaseClient.ts`
 - Environment variables are accessed via `import.meta.env.VITE_*` (Vite convention)
 - Authentication state is managed via Supabase auth helpers and custom hooks
-- Developer bypass mode is toggled via `isBypassActive` state in `useVolunteerAuth`
 - Admin functionality includes managing other admins through the AdminDashboard component

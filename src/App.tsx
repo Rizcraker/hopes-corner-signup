@@ -29,7 +29,6 @@ function App() {
   const [newsTab, setNewsTab] = useState<string>('press')
 
   // State for shared data
-  const [userInfo, setUserInfoState] = useState<UserInfo | null>(null)
   const [shifts, setShiftsState] = useState<Shift[]>([])
 
   // Refs for functions that are passed between hooks to break circular dependencies
@@ -51,17 +50,13 @@ function App() {
   // Initialize the other hooks with current values (using refs for inter-hook functions)
   const userInfoApi = useUserInfo({
     userSession: auth.userSession,
-    isBypassActive: auth.isBypassActive,
     setErrorMessage: auth.setErrorMessage,
     updateShiftSpotsLeft: updateShiftSpotsLeftRef.current,
     shifts
   })
 
   const shiftsApi = useShifts({
-    isBypassActive: auth.isBypassActive,
-    setErrorMessage: auth.setErrorMessage,
-    userInfo,
-    setUserInfo: setUserInfoRef.current
+    setErrorMessage: auth.setErrorMessage
   })
 
   // Update the refs with the real functions from the hooks (after they have initialized)
@@ -85,10 +80,6 @@ function App() {
 
   // Sync local state with the hooks' state
   useEffect(() => {
-    setUserInfoState(userInfoApi.userInfo)
-  }, [userInfoApi.userInfo])
-
-  useEffect(() => {
     setShiftsState(shiftsApi.shifts)
   }, [shiftsApi.shifts])
 
@@ -104,7 +95,7 @@ function App() {
     // 2. User is authenticated (has a session)
     // 3. Admin status has been loaded
     // 4. We haven't redirected yet
-    if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected && !auth.isBypassActive) {
+    if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected) {
       setRedirected(true)
       // Redirect based on admin status
       if (auth.isAdmin) {
@@ -115,7 +106,7 @@ function App() {
         navigate('/volunteer', { replace: true })
       }
     }
-  }, [auth.authLoading, auth.userSession, auth.adminLoading, redirected, auth.isBypassActive, navigate])
+  }, [auth.authLoading, auth.userSession, auth.adminLoading, redirected, navigate])
 
   // Reset redirect flag when user logs out
   useEffect(() => {

@@ -3,7 +3,6 @@ import type { FormEvent } from 'react'
 // All state is owned by useVolunteerAuth (called in App) and passed down, so an in-progress
 // registration survives navigating away from /volunteer and back, exactly as it does today.
 interface AuthPanelProps {
-  setIsBypassActive: (active: boolean) => void
   isSignUp: boolean
   setIsSignUp: (v: boolean) => void
   email: string
@@ -49,7 +48,6 @@ interface AuthPanelProps {
 }
 
 function AuthPanel({
-  setIsBypassActive,
   isSignUp,
   setIsSignUp,
   email,
@@ -95,13 +93,6 @@ function AuthPanel({
 }: AuthPanelProps) {
   return (
     <div className="auth-card">
-      <div className="dev-testing-banner">
-        <span>🛠️ Sandbox Testing Mode Active</span>
-        <button type="button" className="btn-bypass" onClick={() => setIsBypassActive(true)}>
-          ⏩ Jump Straight to Shift Selection Page
-        </button>
-      </div>
-
       <div className="auth-toggle-tabs">
         <button type="button" className={`tab-btn ${isSignUp ? 'active' : ''}`} onClick={() => { setIsSignUp(true); setErrorMessage(null); setInfoMessage(null); setRegistrationStep(1); resetProfileFields(); }}>
           New Volunteer

@@ -413,31 +413,6 @@ button { font-family: var(--font-body); }
   overflow: hidden;
 }
 
-.dev-testing-banner {
-  background: #fffbeb;
-  border-bottom: 1px solid #fde68a;
-  padding: 12px;
-  font-size: 0.85rem;
-  color: #b45309;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-bypass {
-  background: #d97706;
-  color: white;
-  border: none;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-bypass:hover { background: #b45309; }
-
 .auth-toggle-tabs { display: flex; background: var(--hc-green-light); }
 
 .tab-btn {
@@ -1728,3 +1703,234 @@ button { font-family: var(--font-body); }
   .volunteer-row .vol-col.email { display: none; }
   .vol-hours-bar { flex-direction: column; align-items: stretch; }
 }
+
+/* ============================================================
+   Add/Change hours stepper, admin tabs, requests queue
+   ============================================================ */
+
+/* Small button variant (overrides the full-width .btn-primary etc.) */
+.btn-sm { width: auto; padding: 8px 14px; font-size: 0.85rem; border-radius: var(--radius-sm); }
+
+/* "Change / Add Hours" trigger — compact, sits on the left */
+.btn-change-hours {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--hc-green-primary);
+  background: var(--hc-white);
+  border: 1.5px solid var(--hc-green-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.btn-change-hours:hover { background: var(--hc-green-primary); color: #fff; }
+
+/* Editor row (stepper + note + save/cancel) */
+.hours-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* +/- stepper with a typeable box in the middle */
+.hours-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--hc-white);
+}
+.hours-stepper input {
+  width: 64px;
+  border: none;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--hc-text-main);
+  background: transparent;
+  -moz-appearance: textfield;
+}
+.hours-stepper input::-webkit-outer-spin-button,
+.hours-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.hours-stepper input:focus { outline: none; }
+.step-btn {
+  border: none;
+  width: 38px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff;
+  transition: filter 0.15s ease;
+}
+.step-btn:hover { filter: brightness(1.08); }
+.step-plus { background: var(--hc-green-bright); }
+.step-minus { background: var(--hc-danger); }
+
+.hours-note-input {
+  padding: 8px 12px;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+.hours-note-input:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+
+/* Pending-count badge on the Hour Requests action button */
+.req-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--hc-accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+/* Shared card wrapper for the Admins / Requests tab bodies */
+.admin-panel-section {
+  background: var(--hc-white);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  margin-top: 20px;
+}
+.admin-panel-section h4 { margin: 0 0 12px; color: var(--hc-green-dark); }
+
+/* Current admins */
+.admin-chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.admin-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-md);
+  background: var(--hc-green-light);
+}
+.admin-chip-name { font-weight: 700; color: var(--hc-green-dark); }
+.admin-chip-email { font-size: 0.82rem; color: var(--hc-text-muted); word-break: break-word; }
+
+/* Promote list */
+.promote-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.promote-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-md);
+}
+.promote-name { font-weight: 600; }
+.promote-email { font-size: 0.82rem; color: var(--hc-text-muted); }
+
+/* Hour requests queue */
+.request-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--hc-border);
+  border-left: 4px solid var(--hc-accent);
+  border-radius: var(--radius-md);
+  background: var(--hc-cream);
+}
+.request-head { display: flex; align-items: center; gap: 10px; }
+.request-name { font-weight: 700; color: var(--hc-green-dark); font-size: 1.02rem; }
+.request-hours {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--hc-green-mist);
+  color: var(--hc-green-dark);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.request-email { font-size: 0.82rem; color: var(--hc-text-muted); margin-top: 2px; }
+.request-reason { margin: 6px 0; font-style: italic; color: var(--hc-text-main); }
+.request-date { font-size: 0.78rem; color: var(--hc-text-muted); }
+.request-actions { display: flex; gap: 8px; }
+
+/* ============ Volunteer timesheet (user side) ============ */
+.timesheet-box {
+  background: var(--hc-white);
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+.timesheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.timesheet-head h4 { margin: 0; color: var(--hc-green-dark); font-size: 1.15rem; }
+
+.request-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--hc-green-light);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.request-form input[type="number"] { width: 90px; }
+.request-form input[type="text"] { flex: 1 1 200px; }
+.request-form input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+.request-form input:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+
+.timesheet-msg {
+  background: var(--hc-green-mist);
+  color: var(--hc-green-dark);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.timesheet-table-wrap { overflow-x: auto; }
+.timesheet-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.timesheet-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--hc-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid var(--hc-border);
+}
+.timesheet-table td { padding: 11px 12px; border-bottom: 1px solid var(--hc-green-light); vertical-align: middle; }
+.timesheet-table tr:last-child td { border-bottom: none; }
+.ts-hours { font-weight: 700; color: var(--hc-green-primary); white-space: nowrap; }
+.ts-hours.neg { color: var(--hc-danger); }
+.ts-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.ts-approved { background: var(--hc-green-mist); color: var(--hc-green-dark); }
+.ts-pending { background: var(--hc-accent-soft); color: var(--hc-accent); }
+.ts-denied { background: #f0f0f0; color: #888; }

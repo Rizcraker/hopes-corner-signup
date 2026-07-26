@@ -21,9 +21,8 @@ function VolunteerPage({ auth, userInfoApi, shiftsApi }: VolunteerPageProps) {
         <p>Join hands with our community. Sign up for active operations, food service duties, and support shifts below.</p>
       </div>
 
-      {!auth.userSession && !auth.isBypassActive ? (
+      {!auth.userSession ? (
         <AuthPanel
-          setIsBypassActive={auth.setIsBypassActive}
           isSignUp={auth.isSignUp}
           setIsSignUp={auth.setIsSignUp}
           email={auth.email}
