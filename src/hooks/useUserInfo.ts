@@ -201,9 +201,62 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage, upda
     }
   }
 
+  const addHoursVolunteered = async (userId: string, hours: number) => {
+    // If inside Developer bypass mode, update locally
+    if (isBypassActive) {
+      setUserInfo(prev => {
+        if (!prev) return null
+        // Only update if this is the current user
+        if (prev.user_id === userId) {
+          return {
+            ...prev,
+            hours_volunteered: prev.hours_volunteered + hours
+          }
+        }
+        return prev
+      })
+      return
+    }
+
+    if (!userSession?.user) return
+    try {
+      setErrorMessage(null)
+
+      // First get the current user info to get the current hours
+      const { data: currentUserInfo, error: fetchError } = await supabase
+        .from('user_info')
+        .select('hours_volunteered')
+        .eq('user_id', userId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const newHours = (currentUserInfo?.hours_volunteered || 0) + hours
+
+      const { error } = await supabase
+        .from('user_info')
+        .update({ hours_volunteered: newHours })
+        .eq('user_id', userId)
+
+      if (error) throw error
+
+      // Update local state if this is the currently viewed user
+      setUserInfo(prev => {
+        if (!prev) return null
+        if (prev.user_id === userId) {
+          return { ...prev, hours_volunteered: newHours }
+        }
+        return prev
+      })
+    } catch (error) {
+      console.error('Error adding hours volunteered:', error)
+      setErrorMessage('Failed to add hours volunteered. Please try again.')
+    }
+  }
+
   const clearUserInfo = () => {
     setUserInfo(null)
   }
 
-  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift, clearUserInfo }
+  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift, addHoursVolunteered, clearUserInfo }
 }

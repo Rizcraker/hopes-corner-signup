@@ -2,7 +2,7 @@ import type { Shift } from '../../types/shift'
 import type { UserInfo } from '../../types/userInfo'
 import AdminJobManager from './AdminJobManager'
 import { supabase } from '../../lib/supabaseClient'
-import { useState, useEffect, useImperativeHandle, useRef, forwardRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -26,7 +26,9 @@ interface AdminDashboardProps {
   onSignUp: (shift: Shift) => Promise<void>
   // Admin-specific functions
   removeActiveShift: (shiftDescription: string) => Promise<void>
+  addHoursVolunteered: (userId: string, hours: number) => Promise<void>
   refreshData: () => void
+  fetchShifts: () => Promise<void>
   refreshAdminStats?: () => void
   refreshUsers?: () => void
 }
@@ -35,16 +37,19 @@ function AdminDashboard({
   getUserName,
   onSignUp,
   removeActiveShift,
+  addHoursVolunteered,
   refreshData,
   ...browser
 }: AdminDashboardProps) {
   const [volunteers, setVolunteers] = useState<UserInfo[]>([])
   const [volunteersLoading, setVolunteersLoading] = useState(false)
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
-  const [adminsLoading, setAdminsLoading] = useState(true)
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'stats'>('volunteers')
+  const [confirmAction, setConfirmAction] = useState<{ type: 'make' | 'remove'; userId: string } | null>(null)
+  const [hoursToAdd, setHoursToAdd] = useState('')
+  const [selectedVolunteerForHours, setSelectedVolunteerForHours] = useState<string | null>(null)
 
   // Create filtered volunteers based on search term
   const filteredVolunteers = useMemo(() => {
@@ -97,43 +102,87 @@ function AdminDashboard({
     }
   }
 
-  const makeAdmin = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from('admins')
-        .insert({ user_id: userId })
-      if (error) throw error
-      await fetchAdmins()
-      alert('User is now an admin')
-    } catch (err) {
-      console.error('Error making admin:', err)
-      alert('Failed to make admin: ' + err)
-    }
-  }
-
-  const removeAdmin = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to remove admin privileges from this user?')) {
-      return
-    }
-    try {
-      const { error } = await supabase
-        .from('admins')
-        .delete()
-        .eq('user_id', userId)
-      if (error) throw error
-      await fetchAdmins()
-      alert('Admin privileges removed')
-    } catch (err) {
-      console.error('Error removing admin:', err)
-      alert('Failed to remove admin: ' + err)
-    }
-  }
-
   // Fetch volunteers and admins on mount
   useEffect(() => {
     fetchVolunteers()
     fetchAdmins()
   }, [])
+
+  const handleMakeAdminClick = (userId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setConfirmAction({ type: 'make', userId })
+  }
+
+  const handleRemoveAdminClick = (userId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setConfirmAction({ type: 'remove', userId })
+  }
+
+  const confirmMakeAdmin = async () => {
+    if (!confirmAction) return
+    try {
+      const { error } = await supabase
+        .from('admins')
+        .insert({ user_id: confirmAction.userId })
+      if (error) throw error
+      await fetchAdmins()
+    } catch (err) {
+      console.error('Error making admin:', err)
+      alert('Failed to make admin: ' + err)
+    } finally {
+      setConfirmAction(null)
+    }
+  }
+
+  const confirmRemoveAdmin = async () => {
+    if (!confirmAction) return
+    try {
+      const { error } = await supabase
+        .from('admins')
+        .delete()
+        .eq('user_id', confirmAction.userId)
+      if (error) throw error
+      await fetchAdmins()
+    } catch (err) {
+      console.error('Error removing admin:', err)
+      alert('Failed to remove admin: ' + err)
+    } finally {
+      setConfirmAction(null)
+    }
+  }
+
+  const handleAddHoursClick = (userId: string) => {
+    setSelectedVolunteerForHours(userId)
+    setHoursToAdd('')
+  }
+
+  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHoursToAdd(e.target.value)
+  }
+
+  const handleSubmitHours = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedVolunteerForHours || !hoursToAdd || parseFloat(hoursToAdd) <= 0) {
+      alert('Please enter a valid number of hours')
+      return
+    }
+
+    try {
+      await addHoursVolunteered(selectedVolunteerForHours, parseFloat(hoursToAdd))
+      setSelectedVolunteerForHours(null)
+      setHoursToAdd('')
+      // Refresh volunteers data to show updated hours
+      await fetchVolunteers()
+    } catch (err) {
+      console.error('Error adding hours:', err)
+      alert('Failed to add hours: ' + err)
+    }
+  }
+
+  const handleCancelHours = () => {
+    setSelectedVolunteerForHours(null)
+    setHoursToAdd('')
+  }
 
   return (
     <div className="dashboard-container">
@@ -154,10 +203,6 @@ function AdminDashboard({
                 <span className="stat-value">--</span>
                 <span className="stat-label">Active Shifts</span>
               </div>
-              <div className="stat-card">
-                <span className="stat-value">{admins.length}</span>
-                <span className="stat-label">Admins</span>
-              </div>
             </div>
           </div>
 
@@ -165,17 +210,14 @@ function AdminDashboard({
           <div className="admin-management">
             <h4>Management Actions</h4>
             <div className="admin-actions">
-              <button onClick={browser.refreshAdminStats} className="btn-primary" disabled={browser.loading || browser.isRefreshSpinning}>
-                {browser.isRefreshSpinning ? 'Refreshing...' : 'Refresh Statistics'}
-              </button>
               <button onClick={() => {
                   setActiveTab('volunteers');
                   handleClickVolunteers();
-              }} className="btn-secondary" disabled={volunteersLoading || adminsLoading}>
-                {volunteersLoading || adminsLoading ? 'Loading...' : 'View All Volunteers'}
+              }} className={activeTab === 'volunteers' ? 'btn-primary' : 'btn-secondary'} disabled={volunteersLoading}>
+                {volunteersLoading ? 'Loading...' : 'View All Volunteers'}
               </button>
-              <button className="btn-secondary" onClick={() => setActiveTab('shifts')}>
-                Manage Jobs &amp; Shifts
+              <button className={activeTab === 'shifts' ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveTab('shifts')}>
+                Manage Jobs & Shifts
               </button>
               <button className="btn-secondary">
                 Manage Admins
@@ -183,18 +225,19 @@ function AdminDashboard({
             </div>
           </div>
 
-          {/* Volunteer list with admin actions - shown when volunteers tab is active */}
+          {/* Volunteer list - shown when volunteers tab is active */}
           {activeTab === 'volunteers' && (
             <div className="volunteer-section">
               {/* Search volunteers */}
               <div className="admin-search">
-                <input
-                  type="text"
-                  placeholder="Search volunteers by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ marginTop: '1rem', padding: '0.5rem', width: '100%', maxWidth: '300px' }}
-                />
+                <div className="form-group">
+                  <input
+                    type="text"
+                    placeholder="Search volunteers by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
               {filteredVolunteers.length > 0 && (
                 <div className="volunteer-list">
@@ -204,10 +247,8 @@ function AdminDashboard({
                       <div className="vol-col name">Name</div>
                       <div className="vol-col email">Email</div>
                       <div className="vol-col age">Age</div>
-                      <div className="vol-col action">Admin Actions</div>
                     </div>
                     {filteredVolunteers.map(v => {
-                      const isAdmin = admins.some(a => a.user_id === v.user_id)
                       // calculate age from birthday
                       let ageDisplay: string | number = 'N/A'
                       if (v.birthday) {
@@ -220,6 +261,7 @@ function AdminDashboard({
                         }
                         ageDisplay = age
                       }
+                      const isAdmin = admins.some(a => a.user_id === v.user_id)
                       const isExpanded = expandedVolunteerId === v.user_id
                       return (
                         <>
@@ -234,17 +276,6 @@ function AdminDashboard({
                             </div>
                             <div className="vol-col email">{v.email ?? ''}</div>
                             <div className="vol-col age">{ageDisplay}</div>
-                            <div className="vol-col action">
-                              {isAdmin ? (
-                                <button onClick={() => removeAdmin(v.user_id)} className="btn-danger">
-                                  Remove Admin
-                                </button>
-                              ) : (
-                                <button onClick={() => makeAdmin(v.user_id)} className="btn-primary">
-                                  Make Admin
-                                </button>
-                              )}
-                            </div>
                           </div>
                           {isExpanded && (
                             <div className="volunteer-details" style={{
@@ -293,26 +324,47 @@ function AdminDashboard({
                                 <div>
                                   <strong>Hours Volunteered:</strong> {v.hours_volunteered}
                                 </div>
-                                <div>
-                                  <strong>Upcoming Shifts:</strong>
-                                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                                    {v.active_shifts?.map((shift, idx) => (
-                                      <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>{shift}</span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation(); // Prevent triggering the row click
-                                            removeActiveShift(shift);
-                                            fetchVolunteers(); // Refresh volunteers data to show updated shifts
-                                          }}
-                                          className="btn-danger"
-                                          style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
-                                        >
-                                          Remove
-                                        </button>
-                                      </li>
-                                    )) ?? <li>None</li>}
-                                  </ul>
+                                {/* Hours toggle button */}
+                                <button
+                                  onClick={(e) => handleAddHoursClick(v.user_id)}
+                                  className={selectedVolunteerForHours === v.user_id ? 'btn-secondary' : 'btn-primary'}
+                                  style={{ marginTop: '0.5rem' }}
+                                >
+                                  {selectedVolunteerForHours === v.user_id ? 'Cancel' : 'Add Hours'}
+                                </button>
+
+                                {/* Hours form (when selected) */}
+                                {(selectedVolunteerForHours === v.user_id) && (
+                                  <form onSubmit={handleSubmitHours} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div className="form-group" style={{ width: '80px', marginBottom: 0 }}>
+                                      <input
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        value={hoursToAdd}
+                                        onChange={handleHoursChange}
+                                        placeholder="Hours to add"
+                                        style={{ width: '100%' }}
+                                      />
+                                    </div>
+                                    <button type="submit" className="btn-primary">Add</button>
+                                    <button type="button" onClick={handleCancelHours} className="btn-secondary">Cancel</button>
+                                  </form>
+                                )}
+
+                                {/* Admin action buttons */}
+                                <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', textAlign: 'center' }}>
+                                  {isAdmin ? (
+                                    <>
+                                      <button onClick={(e) => handleRemoveAdminClick(v.user_id, e)} className="btn-primary">
+                                        Remove Admin
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button onClick={(e) => handleMakeAdminClick(v.user_id, e)} className="btn-primary">
+                                      Make Admin
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -353,7 +405,7 @@ function AdminDashboard({
             <p>View, edit, or remove volunteer profiles and shift assignments</p>
           </div>
           <div className="admin-info-item">
-            <h5>📅 Shift Administration</h5>
+            <h5>�5 Shift Administration</h5>
             <p>Create, edit, or delete volunteer shift opportunities</p>
           </div>
           <div className="admin-info-item">
@@ -366,6 +418,53 @@ function AdminDashboard({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'var(--hc-white)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '2rem',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: 'var(--shadow-lg)',
+            border: '1px solid var(--hc-border)'
+          }}>
+            <h3 style={{ marginTop: 0, color: 'var(--hc-green-dark)' }}>
+              {confirmAction.type === 'make' ? 'Make Admin?' : 'Remove Admin?'}
+            </h3>
+            <p style={{ color: 'var(--hc-text-main)', marginBottom: '1.5rem' }}>
+              Are you sure you want to {confirmAction.type === 'make' ? 'grant' : 'revoke'} admin privileges to this volunteer?
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={confirmAction.type === 'make' ? confirmMakeAdmin : confirmRemoveAdmin}
+                className="btn-primary"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

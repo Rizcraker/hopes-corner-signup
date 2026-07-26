@@ -1,6 +1,7 @@
 import type { Shift } from '../types/shift'
 import type { UserInfo } from '../types/userInfo'
 import AdminDashboard from '../components/volunteer/AdminDashboard'
+import { useEffect } from 'react'
 
 interface AdminPageProps {
   getUserName: () => string
@@ -30,6 +31,7 @@ interface AdminPageProps {
     fetchUserInfo: (session: any) => Promise<void>
     updateActiveShifts: (shift: Shift) => Promise<void>
     removeActiveShift: (shiftDescription: string) => Promise<void>
+    addHoursVolunteered: (userId: string, hours: number) => Promise<void>
     clearUserInfo: () => void
   }
 }
@@ -46,9 +48,22 @@ function AdminPage({
     console.log('Refreshing data...')
   }
 
+  // Ensure shifts are fetched when entering the admin page
+  useEffect(() => {
+    // Fetch shifts if none are present
+    if (!shiftsApi.shifts || shiftsApi.shifts.length === 0) {
+      void shiftsApi.fetchShifts()
+    }
+  }, [shiftsApi.shifts.length, shiftsApi.fetchShifts])
+
   return (
     <AdminDashboard
       getUserName={getUserName}
+      onSignUp={async (_shift) => {
+        // Admin doesn't need this, it's for regular volunteers
+      }}
+      removeActiveShift={userInfoApi.removeActiveShift}
+      refreshData={refreshData}
       shifts={shiftsApi.shifts}
       loading={shiftsApi.loading}
       errorMessage={null}
@@ -66,8 +81,7 @@ function AdminPage({
       jobGroupNames={shiftsApi.jobGroupNames}
       shiftsByDate={shiftsApi.shiftsByDate}
       shiftsByMonth={shiftsApi.shiftsByMonth}
-      removeActiveShift={userInfoApi.removeActiveShift}
-      refreshData={refreshData}
+      fetchShifts={shiftsApi.fetchShifts}
       refreshAdminStats={() => {
         // Add admin-specific refresh function here
         console.log('Refreshing admin stats...')
@@ -76,9 +90,7 @@ function AdminPage({
         // Add admin-specific refresh function here
         console.log('Refreshing user list...')
       }}
-      onSignUp={async (_shift) => {
-        // Admin doesn't need this, it's for regular volunteers
-      }}
+      addHoursVolunteered={(userId, hours) => userInfoApi.addHoursVolunteered(userId, hours)}
     />
   )
 }
