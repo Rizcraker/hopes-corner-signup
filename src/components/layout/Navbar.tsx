@@ -17,11 +17,6 @@ function Navbar({ isAdmin }: { isAdmin: boolean }) {
     { path: '/contact', label: 'Contact' },
   ]
 
-  // Add Admin link only if user is an admin
-  if (isAdmin) {
-    NAV_ITEMS.push({ path: '/admin', label: 'Admin' })
-  }
-
   // Rendered as <button>, not <a>/NavLink, on purpose: .nav-tab relies on the UA button defaults
   // (no underline, button font-family) that an anchor would not inherit from App.css.
   return (
@@ -41,6 +36,15 @@ function Navbar({ isAdmin }: { isAdmin: boolean }) {
               {label}
             </button>
           ))}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              className={`nav-tab nav-tab-admin ${pathname === '/admin' ? 'active' : ''}`}
+            >
+              <span className="nav-tab-admin-icon" aria-hidden="true">🛡️</span>
+              Admin
+            </button>
+          )}
         </nav>
       </div>
     </header>

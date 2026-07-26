@@ -139,6 +139,31 @@ button { font-family: var(--font-body); }
   box-shadow: 0 3px 10px rgba(34, 99, 77, 0.35);
 }
 
+/* Admin nav button — deliberately stands out from the muted nav tabs */
+.nav-tab-admin {
+  color: var(--hc-white);
+  background-color: var(--hc-accent);
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 10px rgba(230, 126, 34, 0.35);
+}
+
+.nav-tab-admin:hover:not(:disabled) {
+  color: var(--hc-white);
+  background-color: #d06f19;
+  box-shadow: 0 4px 14px rgba(230, 126, 34, 0.45);
+}
+
+.nav-tab-admin.active {
+  color: var(--hc-white);
+  background-color: #c9660f;
+  box-shadow: 0 0 0 3px var(--hc-accent-soft), 0 4px 14px rgba(230, 126, 34, 0.5);
+}
+
+.nav-tab-admin-icon { font-size: 0.95rem; line-height: 1; }
+
 .disabled-tab { opacity: 0.4; cursor: not-allowed; }
 
 /* ============ Layout ============ */

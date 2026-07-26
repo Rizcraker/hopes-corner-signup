@@ -56,7 +56,10 @@ export const buildSampleShift = (
     spotsLeft,
     startDate,
     dateLabel: `${weekdayLong}, ${monthLong} ${getOrdinalDay(startDate.getDate())}`,
-    timeLabel: `${startTime} - ${endTime}`
+    timeLabel: `${startTime} - ${endTime}`,
+    jobId: null,
+    capacity: spotsLeft,
+    password: null
   }
 }
 

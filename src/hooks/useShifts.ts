@@ -90,7 +90,7 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
     try {
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, title, description, spots_left, shift_start, shift_end, location, requirements')
+        .select('id, title, description, spots_left, shift_start, shift_end, location, requirements, job_id, capacity, password')
 
       if (error) throw error
 
@@ -142,7 +142,10 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
             spotsLeft: shift.spots_left ?? 0,
             startDate,
             dateLabel,
-            timeLabel: `${startTime} - ${endTime}`
+            timeLabel: `${startTime} - ${endTime}`,
+            jobId: shift.job_id ?? null,
+            capacity: shift.capacity ?? null,
+            password: shift.password ?? null
           }
         })
         .filter((shift): shift is Shift => shift !== null)

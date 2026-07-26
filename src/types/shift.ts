@@ -1,5 +1,5 @@
 export interface Shift {
-  id: number
+  id: string
   role: string
   time: string
   location: string
@@ -9,4 +9,7 @@ export interface Shift {
   startDate: Date
   dateLabel: string
   timeLabel: string
+  jobId: string | null
+  capacity: number | null
+  password: string | null
 }
