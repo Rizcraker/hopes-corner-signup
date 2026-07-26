@@ -14,6 +14,6 @@ export interface UserInfo {
   zip_code: string;
   organization: string;
   email: string;
-  can_self_report: boolean;
-  first_volunteered_at: string | null;
+  can_self_report?: boolean;
+  first_volunteered_at?: string | null;
 }

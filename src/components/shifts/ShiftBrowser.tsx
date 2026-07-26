@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Shift } from '../../types/shift'
 import ShiftCard from './ShiftCard'
 
@@ -44,6 +45,14 @@ function ShiftBrowser({
   shiftsByMonth,
   onSignUp,
 }: ShiftBrowserProps) {
+  const [query, setQuery] = useState('')
+  const term = query.trim().toLowerCase()
+  const matches = (s: Shift) =>
+    !term ||
+    s.role.toLowerCase().includes(term) ||
+    s.location.toLowerCase().includes(term) ||
+    s.description.toLowerCase().includes(term)
+
   return (
     <div className="shifts-section">
       <div className="section-header">
@@ -58,12 +67,26 @@ function ShiftBrowser({
         </button>
       </div>
 
-      <div className="sort-controls">
-        <span className="sort-label">Sort by:</span>
-        <div className="sort-btn-group">
-          <button type="button" className={`sort-btn ${sortMode === 'job' ? 'active' : ''}`} onClick={() => setSortMode('job')}>Job</button>
-          <button type="button" className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`} onClick={() => setSortMode('date')}>Date</button>
-          <button type="button" className={`sort-btn ${sortMode === 'calendar' ? 'active' : ''}`} onClick={() => setSortMode('calendar')}>Calendar</button>
+      <div className="shift-controls-row">
+        <div className="shift-search">
+          <input
+            type="text"
+            placeholder="Search shifts by job, location, or description…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search shifts"
+          />
+          {query && (
+            <button type="button" className="shift-search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+        <div className="sort-controls">
+          <span className="sort-label">Sort by:</span>
+          <div className="sort-btn-group">
+            <button type="button" className={`sort-btn ${sortMode === 'job' ? 'active' : ''}`} onClick={() => setSortMode('job')}>Job</button>
+            <button type="button" className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`} onClick={() => setSortMode('date')}>Date</button>
+            <button type="button" className={`sort-btn ${sortMode === 'calendar' ? 'active' : ''}`} onClick={() => setSortMode('calendar')}>Calendar</button>
+          </div>
         </div>
       </div>
 
@@ -73,12 +96,15 @@ function ShiftBrowser({
         <div className="loading-spinner">Loading shift schedule...</div>
       ) : shifts.length === 0 ? (
         <p className="note-text">No shifts are currently posted. Check back soon!</p>
+      ) : !shifts.some(matches) ? (
+        <p className="note-text">No shifts match “{query}”. Try a different search.</p>
       ) : sortMode === 'job' ? (
         /* ---------- JOB VIEW: accordion grouped by role, expand to reveal individual dates ---------- */
         <div className="job-accordion">
           {jobGroupNames.map((role, groupIndex) => {
-            const group = shiftsByJob[role]
-            const isOpen = expandedJobs.has(role)
+            const group = shiftsByJob[role].filter(matches)
+            if (group.length === 0) return null
+            const isOpen = expandedJobs.has(role) || !!term
             return (
               <div key={role} className="job-group">
                 <button type="button" className="job-group-header" onClick={() => toggleJobGroup(role)}>
@@ -115,11 +141,11 @@ function ShiftBrowser({
       ) : sortMode === 'date' ? (
         /* ---------- DATE VIEW: flat chronological list, grouped by day ---------- */
         <div className="date-view">
-          {Array.from(new Set(shiftsByDate.map(s => s.dateLabel))).map(dateLabel => (
+          {Array.from(new Set(shiftsByDate.filter(matches).map(s => s.dateLabel))).map(dateLabel => (
             <div key={dateLabel} className="date-block">
               <h4 className="date-block-title">{dateLabel}</h4>
               <div className="shifts-grid">
-                {shiftsByDate.filter(s => s.dateLabel === dateLabel).map(shift => (
+                {shiftsByDate.filter(s => s.dateLabel === dateLabel && matches(s)).map(shift => (
                   <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
                 ))}
               </div>
@@ -129,7 +155,9 @@ function ShiftBrowser({
       ) : (
         /* ---------- CALENDAR VIEW: pick a day, see what's available ---------- */
         <div className="calendar-view">
-          {Object.entries(shiftsByMonth).map(([month, monthShifts]) => {
+          {Object.entries(shiftsByMonth).map(([month, allMonthShifts]) => {
+            const monthShifts = allMonthShifts.filter(matches)
+            if (monthShifts.length === 0) return null
             const uniqueDayKeys = Array.from(new Set(monthShifts.map(s => s.startDate.toDateString())))
             return (
               <div key={month} className="calendar-month-block">
@@ -161,7 +189,7 @@ function ShiftBrowser({
                 Shifts on {shiftsByDate.find(s => s.startDate.toDateString() === selectedCalendarDay)?.dateLabel}
               </h4>
               <div className="shifts-grid">
-                {shiftsByDate.filter(s => s.startDate.toDateString() === selectedCalendarDay).map(shift => (
+                {shiftsByDate.filter(s => s.startDate.toDateString() === selectedCalendarDay && matches(s)).map(shift => (
                   <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
                 ))}
               </div>

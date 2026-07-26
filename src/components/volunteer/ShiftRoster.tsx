@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabaseClient'
 import { useSignups } from '../../hooks/useSignups'
-import type { RosterEntry, SignupStatus } from '../../hooks/useSignups'
-import type { Signup } from '../../types/signup'
+import type { RosterEntry } from '../../hooks/useSignups'
+import type { Signup, SignupStatus } from '../../types/signup'
 import type { Shift } from '../../types/shift'
 
 // Roster panel for a single shift: who's signed up, add walk-ins, move / remove,

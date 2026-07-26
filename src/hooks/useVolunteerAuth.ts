@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, RefObject } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import type { UserInfo } from '../types/userInfo'
 
 // The auth listener and sign-out have to drive the shifts / user-info hooks, but those hooks in
 // turn need isBypassActive and setErrorMessage from this one. Passing them through a ref breaks

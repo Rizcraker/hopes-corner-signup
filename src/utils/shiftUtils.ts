@@ -47,7 +47,7 @@ export const buildSampleShift = (
   const monthLong = startDate.toLocaleDateString('en-US', { month: 'long' })
 
   return {
-    id,
+    id: String(id),
     role,
     time: `${formattedDate} · ${startTime} - ${endTime}`,
     location,

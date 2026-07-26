@@ -86,19 +86,15 @@ function AdminDashboard({
   }
 
   const fetchAdmins = async () => {
-    setAdminsLoading(true)
     try {
       const { data, error } = await supabase
         .from('admins')
         .select('id, user_id')
       if (error) throw error
-      console.log('Fetched admins:', data)
       setAdmins(data)
     } catch (err) {
       console.error('Error fetching admins:', err)
       alert('Failed to load admins: ' + err)
-    } finally {
-      setAdminsLoading(false)
     }
   }
 
@@ -200,8 +196,12 @@ function AdminDashboard({
                 <span className="stat-label">Registered Volunteers</span>
               </div>
               <div className="stat-card">
-                <span className="stat-value">--</span>
+                <span className="stat-value">{browser.shifts.length}</span>
                 <span className="stat-label">Active Shifts</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-value">{admins.length}</span>
+                <span className="stat-label">Admins</span>
               </div>
             </div>
           </div>
@@ -247,6 +247,7 @@ function AdminDashboard({
                       <div className="vol-col name">Name</div>
                       <div className="vol-col email">Email</div>
                       <div className="vol-col age">Age</div>
+                      <div className="vol-col expand" aria-hidden="true"></div>
                     </div>
                     {filteredVolunteers.map(v => {
                       // calculate age from birthday
@@ -267,105 +268,71 @@ function AdminDashboard({
                         <>
                           <div
                             key={v.user_id}
-                            className="volunteer-row"
+                            className={`volunteer-row ${isExpanded ? 'is-open' : ''}`}
                             onClick={() => setExpandedVolunteerId(isExpanded ? null : v.user_id)}
-                            style={{ cursor: 'pointer', userSelect: 'none' }}
                           >
                             <div className="vol-col name">
-                              {v.first_name ?? ''} {v.last_name ?? ''}
+                              {(v.first_name || v.last_name) ? `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim() : '—'}
+                              {isAdmin && <span className="vol-admin-dot" title="Admin">🛡️</span>}
                             </div>
                             <div className="vol-col email">{v.email ?? ''}</div>
-                            <div className="vol-col age">{ageDisplay}</div>
+                            <div className="vol-col age"><span className="age-pill">{ageDisplay}</span></div>
+                            <div className="vol-col expand"><span className="expand-chevron">▾</span></div>
                           </div>
                           {isExpanded && (
-                            <div className="volunteer-details" style={{
-                              padding: '1rem',
-                              backgroundColor: '#f9f9f9',
-                              borderTop: '1px solid #eee',
-                              margin: '0 -1rem',
-                            }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                                <div>
-                                  <strong>First Name:</strong> {v.first_name ?? ''}
+                            <div className="vol-detail-panel" onClick={(e) => e.stopPropagation()}>
+                              {/* Hours highlight + inline add-hours control */}
+                              <div className="vol-hours-bar">
+                                <div className="vol-hours-figure">
+                                  <span className="vol-hours-value">{v.hours_volunteered ?? 0}</span>
+                                  <span className="vol-hours-label">hours volunteered</span>
                                 </div>
-                                <div>
-                                  <strong>Last Name:</strong> {v.last_name ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Email:</strong> {v.email ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Birthday:</strong> {v.birthday ? new Date(v.birthday).toLocaleDateString() : 'N/A'}
-                                </div>
-                                <div>
-                                  <strong>Phone Number:</strong> {v.phone_number ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Emergency Contact Name:</strong> {v.emergency_contact_name ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Emergency Contact Phone:</strong> {v.emergency_contact_phone ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Employer:</strong> {v.employer ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Street Address:</strong> {v.street_address ?? ''}
-                                </div>
-                                <div>
-                                  <strong>City:</strong> {v.city ?? ''}
-                                </div>
-                                <div>
-                                  <strong>ZIP Code:</strong> {v.zip_code ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Organization:</strong> {v.organization ?? ''}
-                                </div>
-                                <div>
-                                  <strong>Hours Volunteered:</strong> {v.hours_volunteered}
-                                </div>
-                                {/* Hours toggle button */}
-                                <button
-                                  onClick={(e) => handleAddHoursClick(v.user_id)}
-                                  className={selectedVolunteerForHours === v.user_id ? 'btn-secondary' : 'btn-primary'}
-                                  style={{ marginTop: '0.5rem' }}
-                                >
-                                  {selectedVolunteerForHours === v.user_id ? 'Cancel' : 'Add Hours'}
-                                </button>
-
-                                {/* Hours form (when selected) */}
-                                {(selectedVolunteerForHours === v.user_id) && (
-                                  <form onSubmit={handleSubmitHours} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div className="form-group" style={{ width: '80px', marginBottom: 0 }}>
-                                      <input
-                                        type="number"
-                                        min="0.1"
-                                        step="0.1"
-                                        value={hoursToAdd}
-                                        onChange={handleHoursChange}
-                                        placeholder="Hours to add"
-                                        style={{ width: '100%' }}
-                                      />
-                                    </div>
-                                    <button type="submit" className="btn-primary">Add</button>
+                                {selectedVolunteerForHours === v.user_id ? (
+                                  <form className="vol-hours-form" onSubmit={handleSubmitHours}>
+                                    <input
+                                      type="number"
+                                      min="0.1"
+                                      step="0.1"
+                                      value={hoursToAdd}
+                                      onChange={handleHoursChange}
+                                      placeholder="Hours"
+                                      autoFocus
+                                    />
+                                    <button type="submit" className="btn-primary">Save</button>
                                     <button type="button" onClick={handleCancelHours} className="btn-secondary">Cancel</button>
                                   </form>
+                                ) : (
+                                  <button onClick={() => handleAddHoursClick(v.user_id)} className="btn-accent">
+                                    + Add hours
+                                  </button>
                                 )}
+                              </div>
 
-                                {/* Admin action buttons */}
-                                <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', textAlign: 'center' }}>
-                                  {isAdmin ? (
-                                    <>
-                                      <button onClick={(e) => handleRemoveAdminClick(v.user_id, e)} className="btn-primary">
-                                        Remove Admin
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <button onClick={(e) => handleMakeAdminClick(v.user_id, e)} className="btn-primary">
-                                      Make Admin
+                              {/* Profile fields */}
+                              <dl className="vol-detail-grid">
+                                <div className="vol-field"><dt>Phone</dt><dd>{v.phone_number || '—'}</dd></div>
+                                <div className="vol-field"><dt>Birthday</dt><dd>{v.birthday ? new Date(v.birthday).toLocaleDateString() : '—'}</dd></div>
+                                <div className="vol-field"><dt>Emergency contact</dt><dd>{v.emergency_contact_name || '—'}</dd></div>
+                                <div className="vol-field"><dt>Emergency phone</dt><dd>{v.emergency_contact_phone || '—'}</dd></div>
+                                <div className="vol-field"><dt>Employer</dt><dd>{v.employer || '—'}</dd></div>
+                                <div className="vol-field"><dt>Organization</dt><dd>{v.organization || '—'}</dd></div>
+                                <div className="vol-field vol-field-wide"><dt>Address</dt><dd>{[v.street_address, v.city, v.zip_code].filter(Boolean).join(', ') || '—'}</dd></div>
+                              </dl>
+
+                              {/* Admin role action */}
+                              <div className="vol-detail-actions">
+                                {isAdmin ? (
+                                  <>
+                                    <span className="vol-role-tag">🛡️ Admin</span>
+                                    <button onClick={(e) => handleRemoveAdminClick(v.user_id, e)} className="btn-danger">
+                                      Remove admin
                                     </button>
-                                  )}
-                                </div>
+                                  </>
+                                ) : (
+                                  <button onClick={(e) => handleMakeAdminClick(v.user_id, e)} className="btn-secondary">
+                                    Make admin
+                                  </button>
+                                )}
                               </div>
                             </div>
                           )}
@@ -405,7 +372,7 @@ function AdminDashboard({
             <p>View, edit, or remove volunteer profiles and shift assignments</p>
           </div>
           <div className="admin-info-item">
-            <h5>�5 Shift Administration</h5>
+            <h5>📅 Shift Administration</h5>
             <p>Create, edit, or delete volunteer shift opportunities</p>
           </div>
           <div className="admin-info-item">
