@@ -41,7 +41,6 @@ function Navbar({ isAdmin }: { isAdmin: boolean }) {
               onClick={() => navigate('/admin')}
               className={`nav-tab nav-tab-admin ${pathname === '/admin' ? 'active' : ''}`}
             >
-              <span className="nav-tab-admin-icon" aria-hidden="true">🛡️</span>
               Admin
             </button>
           )}

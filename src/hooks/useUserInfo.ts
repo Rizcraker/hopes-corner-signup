@@ -8,9 +8,11 @@ interface UseUserInfoDeps {
   userSession: any
   isBypassActive: boolean
   setErrorMessage: Dispatch<SetStateAction<string | null>>
+  updateShiftSpotsLeft: (shiftId: string, change: number) => Promise<void>
+  shifts: Shift[]
 }
 
-export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: UseUserInfoDeps) {
+export function useUserInfo({ userSession, isBypassActive, setErrorMessage, updateShiftSpotsLeft, shifts }: UseUserInfoDeps) {
   // User info data from user_info supabase tracking matrix
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
 
@@ -114,6 +116,8 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
           active_shifts: [...currentShifts, shiftDescription]
         }
       })
+      // Update shift spots left via the shift updater (will update state via useShifts hook)
+      await updateShiftSpotsLeft(shift.id, -1)
       return
     }
 
@@ -140,6 +144,9 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         if (!prev) return null
         return { ...prev, active_shifts: newActiveShifts }
       })
+
+      // Update the shift's spots left (decrement by 1)
+      await updateShiftSpotsLeft(shift.id, -1)
     } catch (error) {
       console.error('Error updating active shifts:', error)
       setErrorMessage('Failed to update your shift list. Please try again.')
@@ -153,16 +160,22 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         if (!prev) return null
         return {
           ...prev,
-          active_shifts: prev.active_shifts.filter(shift => shift !== shiftDescription)
+          active_shifts: prev.active_shifts.filter(s => s !== shiftDescription)
         }
       })
+      // Find the shift by description to get its id for updating spots left
+      const shift = shifts.find(s => `${s.role} - ${s.time}` === shiftDescription)
+      if (shift) {
+        // Update shift spots left via the shift updater (will update state via useShifts hook)
+        await updateShiftSpotsLeft(shift.id, 1)
+      }
       return
     }
 
     if (!userSession?.user || !userInfo) return
     try {
       setErrorMessage(null)
-      const newActiveShifts = userInfo.active_shifts.filter(shift => shift !== shiftDescription)
+      const newActiveShifts = userInfo.active_shifts.filter(s => s !== shiftDescription)
 
       const { error } = await supabase
         .from('user_info')
@@ -175,6 +188,13 @@ export function useUserInfo({ userSession, isBypassActive, setErrorMessage }: Us
         if (!prev) return null
         return { ...prev, active_shifts: newActiveShifts }
       })
+
+      // Find the shift by description to get its id for updating spots left
+      const shift = shifts.find(s => `${s.role} - ${s.time}` === shiftDescription)
+      if (shift) {
+        // Update the shift's spots left (increment by 1)
+        await updateShiftSpotsLeft(shift.id, 1)
+      }
     } catch (error) {
       console.error('Error removing active shift:', error)
       setErrorMessage('Failed to remove shift. Please try again.')

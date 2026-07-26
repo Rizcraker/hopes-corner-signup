@@ -11,6 +11,8 @@ export interface AuthDataBridge {
   fetchUserInfo: (session: any) => Promise<void>
   clearShifts: () => void
   clearUserInfo: () => void
+  updateShiftSpotsLeft: (shiftId: string, change: number) => Promise<void>
+  setUserInfo: (info: UserInfo | null) => void
 }
 
 export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {

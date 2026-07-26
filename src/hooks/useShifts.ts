@@ -188,6 +188,57 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
     setShifts([])
   }
 
+  const updateShiftSpotsLeft = async (shiftId: string, change: number) => {
+    // If inside Developer bypass mode, mimic the state transition gracefully
+    if (isBypassActive) {
+      setShifts(prev => {
+        return prev.map(shift => {
+          if (shift.id === shiftId) {
+            return { ...shift, spotsLeft: Math.max(0, shift.spotsLeft + change) }
+          }
+          return shift
+        })
+      })
+      return
+    }
+
+    if (!shiftId) return
+
+    try {
+      setErrorMessage(null)
+      // First, get the current shift to update
+      const { data: shiftData, error: fetchError } = await supabase
+        .from('shifts')
+        .select('spots_left')
+        .eq('id', shiftId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const newSpotsLeft = Math.max(0, shiftData.spots_left + change)
+
+      const { error } = await supabase
+        .from('shifts')
+        .update({ spots_left: newSpotsLeft })
+        .eq('id', shiftId)
+
+      if (error) throw error
+
+      // Update local state optimistically
+      setShifts(prev => {
+        return prev.map(shift => {
+          if (shift.id === shiftId) {
+            return { ...shift, spotsLeft: newSpotsLeft }
+          }
+          return shift
+        })
+      })
+    } catch (error) {
+      console.error('Error updating shift spots left:', error)
+      setErrorMessage('Failed to update shift. Please try again.')
+    }
+  }
+
   return {
     shifts, setShifts,
     loading,
@@ -203,5 +254,6 @@ export function useShifts({ isBypassActive, setErrorMessage, userInfo, setUserIn
     jobGroupNames,
     shiftsByDate,
     shiftsByMonth,
+    updateShiftSpotsLeft
   }
 }

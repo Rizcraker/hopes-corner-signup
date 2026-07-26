@@ -5,6 +5,9 @@ import { useVolunteerAuth } from './hooks/useVolunteerAuth'
 import type { AuthDataBridge } from './hooks/useVolunteerAuth'
 import { useUserInfo } from './hooks/useUserInfo'
 import { useShifts } from './hooks/useShifts'
+import type { Shift } from './types/shift'
+import type { UserInfo } from './types/userInfo'
+import type { Dispatch, SetStateAction } from 'react'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import BadgesRow from './components/layout/BadgesRow'
@@ -25,39 +28,71 @@ function App() {
   const [communityTab, setCommunityTab] = useState<string>('stories')
   const [newsTab, setNewsTab] = useState<string>('press')
 
-  // Every hook below is called here, above <Routes>, and its result passed down as props.
-  // Route elements unmount on navigation, so state owned further down would reset each time you
-  // left the tab — today it survives, and it has to keep surviving.
-  const dataBridge = useRef<AuthDataBridge>({
+  // State for shared data
+  const [userInfo, setUserInfoState] = useState<UserInfo | null>(null)
+  const [shifts, setShiftsState] = useState<Shift[]>([])
+
+  // Refs for functions that are passed between hooks to break circular dependencies
+  const updateShiftSpotsLeftRef = useRef<(shiftId: string, change: number) => Promise<void>>(async () => {})
+  const setUserInfoRef = useRef<Dispatch<SetStateAction<UserInfo | null>>>((_) => {})
+  const setShiftsRef = useRef<Dispatch<SetStateAction<Shift[]>>>((_) => {})
+
+  // Initialize the auth hook with a bridge ref (we'll update it later)
+  const authBridgeRef = useRef<AuthDataBridge>({
     fetchShifts: async () => {},
     fetchUserInfo: async () => {},
     clearShifts: () => {},
     clearUserInfo: () => {},
+    updateShiftSpotsLeft: async () => {},
+    setUserInfo: () => {}
   })
+  const auth = useVolunteerAuth(authBridgeRef)
 
-  const auth = useVolunteerAuth(dataBridge)
+  // Initialize the other hooks with current values (using refs for inter-hook functions)
   const userInfoApi = useUserInfo({
     userSession: auth.userSession,
     isBypassActive: auth.isBypassActive,
     setErrorMessage: auth.setErrorMessage,
+    updateShiftSpotsLeft: updateShiftSpotsLeftRef.current,
+    shifts
   })
+
   const shiftsApi = useShifts({
     isBypassActive: auth.isBypassActive,
     setErrorMessage: auth.setErrorMessage,
-    userInfo: userInfoApi.userInfo,
-    setUserInfo: userInfoApi.setUserInfo,
+    userInfo,
+    setUserInfo: setUserInfoRef.current
   })
-  const navigate = useNavigate()
 
-  // Populate the data bridge so hooks can call each other
+  // Update the refs with the real functions from the hooks (after they have initialized)
   useLayoutEffect(() => {
-    dataBridge.current = {
+    updateShiftSpotsLeftRef.current = shiftsApi.updateShiftSpotsLeft
+    setUserInfoRef.current = userInfoApi.setUserInfo
+    setShiftsRef.current = shiftsApi.setShifts
+  }, [shiftsApi, userInfoApi])
+
+  // Update the auth bridge ref with the real functions from the hooks
+  useLayoutEffect(() => {
+    authBridgeRef.current = {
       fetchShifts: shiftsApi.fetchShifts,
       fetchUserInfo: userInfoApi.fetchUserInfo,
       clearShifts: shiftsApi.clearShifts,
       clearUserInfo: userInfoApi.clearUserInfo,
+      updateShiftSpotsLeft: shiftsApi.updateShiftSpotsLeft,
+      setUserInfo: userInfoApi.setUserInfo
     }
   }, [shiftsApi, userInfoApi])
+
+  // Sync local state with the hooks' state
+  useEffect(() => {
+    setUserInfoState(userInfoApi.userInfo)
+  }, [userInfoApi.userInfo])
+
+  useEffect(() => {
+    setShiftsState(shiftsApi.shifts)
+  }, [shiftsApi.shifts])
+
+  const navigate = useNavigate()
 
   // Track if we've already handled redirection after login
   const [redirected, setRedirected] = useState(false)
@@ -110,7 +145,7 @@ function App() {
           {/* ================= LEARN TAB ================= */}
           <Route path="/learn" element={<LearnPage />} />
 
-          {/* ================= ABOUT TAB ================= */}
+          {/* ================= ABOVE TAB ================= */}
           <Route path="/about" element={<AboutPage />} />
 
           {/* ================= COMMUNITY TAB ================= */}
