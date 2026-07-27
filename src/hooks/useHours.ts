@@ -14,33 +14,6 @@ export function useHours() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Add a signed delta to a user's cached total in user_info (read-modify-write).
-  // .select() after the update returns the changed row; if RLS blocked the write it
-  // comes back empty (no error), so we surface that instead of failing silently.
-  const bumpUserTotal = async (userId: string, delta: number) => {
-    const { data, error } = await supabase
-      .from('user_info')
-      .select('hours_volunteered')
-      .eq('user_id', userId)
-      .single()
-    if (error) throw error
-    const next = Math.max(0, (data?.hours_volunteered ?? 0) + delta)
-    const { data: updated, error: upErr } = await supabase
-      .from('user_info')
-      .update({ hours_volunteered: next })
-      .eq('user_id', userId)
-      .select('hours_volunteered')
-      .maybeSingle()
-    if (upErr) throw upErr
-    if (!updated) {
-      throw new Error(
-        "Hours total not updated (0 rows). RLS is blocking writes to user_info — " +
-        "admins need an UPDATE policy on that table."
-      )
-    }
-    return updated.hours_volunteered as number
-  }
-
   // --- Volunteer side ---------------------------------------------------------
   const fetchMyEntries = useCallback(async (userId: string): Promise<HourEntry[]> => {
     setLoading(true)
@@ -105,33 +78,23 @@ export function useHours() {
   }, [])
 
   const approveEntry = useCallback(async (entry: HourEntry) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase
-      .from('hour_entries')
-      .update({ status: 'approved', decided_at: new Date().toISOString(), decided_by: user?.id ?? null })
-      .eq('id', entry.id)
+    const { error } = await supabase.rpc('approve_hour_request', { entry_id: entry.id })
     if (error) throw error
-    await bumpUserTotal(entry.user_id, entry.hours)
   }, [])
 
   const denyEntry = useCallback(async (id: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase
-      .from('hour_entries')
-      .update({ status: 'denied', decided_at: new Date().toISOString(), decided_by: user?.id ?? null })
-      .eq('id', id)
+    const { error } = await supabase.rpc('deny_hour_request', { entry_id: id })
     if (error) throw error
   }, [])
 
   // Admin directly logs a (signed) hours change with a task note — approved on the spot.
+  // Runs in one atomic SECURITY DEFINER function; returns the volunteer's new total.
   const logHours = useCallback(async (userId: string, hours: number, task: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('hour_entries').insert({
-      user_id: userId, hours, task: task || null,
-      status: 'approved', decided_at: new Date().toISOString(), decided_by: user?.id ?? null,
+    const { data, error } = await supabase.rpc('admin_log_hours', {
+      target: userId, delta: hours, note: task || '',
     })
     if (error) throw error
-    return await bumpUserTotal(userId, hours)
+    return data as number
   }, [])
 
   return { loading, error, fetchMyEntries, requestHours, fetchPending, approveEntry, denyEntry, logHours }
