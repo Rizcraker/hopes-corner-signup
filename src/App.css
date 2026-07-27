@@ -1934,3 +1934,175 @@ button { font-family: var(--font-body); }
 .ts-approved { background: var(--hc-green-mist); color: var(--hc-green-dark); }
 .ts-pending { background: var(--hc-accent-soft); color: var(--hc-accent); }
 .ts-denied { background: #f0f0f0; color: #888; }
+
+/* ============================================================
+   VISUAL REFRESH v2 — admin dashboard shell + premium surfaces
+   (appended last so it wins the cascade)
+   ============================================================ */
+
+.dashboard-container { gap: 22px; }
+
+/* ---- Admin hero ---- */
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  padding: 30px 32px;
+  background: linear-gradient(135deg, var(--hc-green-dark) 0%, var(--hc-green-primary) 62%, var(--hc-green-bright) 130%);
+  color: #eaf5f0;
+  box-shadow: var(--shadow-md);
+}
+.admin-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(560px 220px at 88% -30%, rgba(255,255,255,0.16), transparent 70%);
+  pointer-events: none;
+}
+.admin-hero-text { position: relative; z-index: 1; }
+.admin-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 5px 13px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-hero h3 { color: #fff; margin: 12px 0 4px; font-size: 1.9rem; letter-spacing: -0.02em; }
+.admin-hero p { margin: 0; color: rgba(255,255,255,0.85); max-width: 560px; }
+
+/* ---- Stat cards (both admin + volunteer) ---- */
+.dash-stats-row { flex-wrap: wrap; gap: 16px; }
+.stat-card {
+  position: relative;
+  flex: 1 1 160px;
+  background: var(--hc-white);
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 18px 18px;
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--hc-green-primary), var(--hc-green-bright));
+}
+.stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-full);
+  background: var(--hc-green-light);
+  font-size: 1.2rem;
+}
+.stat-value { font-size: 2rem; letter-spacing: -0.02em; margin-bottom: 2px; }
+.stat-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hc-text-muted);
+}
+
+/* ---- Admin tab toolbar (segmented) ---- */
+.admin-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--hc-white);
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xs);
+  overflow-x: auto;
+}
+.admin-tab {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  border: none;
+  background: transparent;
+  color: var(--hc-text-muted);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 11px 18px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.admin-tab:hover:not(:disabled):not(.active) { background: var(--hc-green-light); color: var(--hc-green-dark); }
+.admin-tab.active {
+  background: linear-gradient(135deg, var(--hc-green-primary), var(--hc-green-bright));
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(34,99,77,0.32);
+}
+.admin-tab:disabled { opacity: 0.6; cursor: default; }
+.admin-tab .req-badge { margin-left: 0; }
+.admin-tab.active .req-badge { background: #fff; color: var(--hc-accent); }
+
+.admin-tab-content { display: flex; flex-direction: column; }
+.admin-tab-content > * { margin-top: 0; }
+
+/* Volunteer list / panels sit flush under the toolbar now */
+.admin-tab-content .volunteer-section,
+.admin-tab-content .admin-shift-manager { margin-top: 4px; }
+.admin-tab-content .volunteer-list { margin-top: 8px; }
+
+/* ---- Volunteer greeting card ---- */
+.welcome-banner {
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  background:
+    radial-gradient(420px 160px at 100% 0%, var(--hc-green-light), transparent 70%),
+    var(--hc-white);
+  padding: 26px 28px;
+}
+.welcome-banner h3 { font-size: 1.6rem; letter-spacing: -0.02em; }
+.welcome-banner > div > p { color: var(--hc-text-muted); }
+
+/* ---- Section headings with accent tick ---- */
+.volunteer-list > h4,
+.admin-panel-section > h4 {
+  position: relative;
+  padding-left: 14px;
+}
+.volunteer-list > h4::before,
+.admin-panel-section > h4::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 2px; bottom: 2px;
+  width: 4px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(var(--hc-green-primary), var(--hc-green-bright));
+}
+
+/* ---- Shift accordion polish ---- */
+.job-group-header:hover { background: var(--hc-green-light); }
+.shift-card-header h4 { color: var(--hc-green-dark); }
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+  .admin-hero { padding: 24px 20px; }
+  .admin-hero h3 { font-size: 1.5rem; }
+  .admin-toolbar { border-radius: var(--radius-lg); }
+  .admin-tab { flex: 0 0 auto; font-size: 0.86rem; padding: 10px 14px; }
+}

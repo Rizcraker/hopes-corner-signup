@@ -225,53 +225,57 @@ function AdminDashboard({
   }
 
   return (
-    <div className="dashboard-container">
-      <div className="welcome-banner">
-        <div style={{ flex: 1, minWidth: '260px' }}>
-          <h3>Admin Dashboard - {getUserName()}</h3>
-          <p>Welcome back! You have full administrative access to Hope's Corner's volunteer management system.</p>
+    <div className="dashboard-container admin-dashboard">
+      {/* Hero */}
+      <header className="admin-hero">
+        <div className="admin-hero-text">
+          <span className="admin-eyebrow">🛡️ Admin Console</span>
+          <h3>Welcome back, {getUserName()}</h3>
+          <p>Full administrative access to Hope's Corner's volunteer operations.</p>
+        </div>
+      </header>
 
-          {/* Admin-only statistics */}
-          <div className="admin-stats">
-            <h4>Administrative Overview</h4>
-            <div className="dash-stats-row">
-              <div className="stat-card">
-                <span className="stat-value">{volunteers.length}</span>
-                <span className="stat-label">Registered Volunteers</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-value">{browser.shifts.length}</span>
-                <span className="stat-label">Active Shifts</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-value">{admins.length}</span>
-                <span className="stat-label">Admins</span>
-              </div>
-            </div>
-          </div>
+      {/* Stat cards */}
+      <div className="dash-stats-row admin-stat-row">
+        <div className="stat-card">
+          <span className="stat-icon" aria-hidden="true">👥</span>
+          <span className="stat-value">{volunteers.length}</span>
+          <span className="stat-label">Registered Volunteers</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-icon" aria-hidden="true">📅</span>
+          <span className="stat-value">{browser.shifts.length}</span>
+          <span className="stat-label">Active Shifts</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-icon" aria-hidden="true">🛡️</span>
+          <span className="stat-value">{admins.length}</span>
+          <span className="stat-label">Admins</span>
+        </div>
+      </div>
 
-          {/* Admin management sections */}
-          <div className="admin-management">
-            <h4>Management Actions</h4>
-            <div className="admin-actions">
-              <button onClick={() => {
-                  setActiveTab('volunteers');
-                  handleClickVolunteers();
-              }} className={activeTab === 'volunteers' ? 'btn-primary' : 'btn-secondary'} disabled={volunteersLoading}>
-                {volunteersLoading ? 'Loading...' : 'View All Volunteers'}
-              </button>
-              <button className={activeTab === 'shifts' ? 'btn-primary' : 'btn-secondary'} onClick={() => setActiveTab('shifts')}>
-                Manage Jobs & Shifts
-              </button>
-              <button className={activeTab === 'admins' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
-                Manage Admins
-              </button>
-              <button className={activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setActiveTab('requests'); loadPending() }}>
-                Hour Requests
-                {pendingRequests.length > 0 && <span className="req-badge">{pendingRequests.length}</span>}
-              </button>
-            </div>
-          </div>
+      {/* Tab toolbar */}
+      <nav className="admin-toolbar" aria-label="Admin sections">
+        <button
+          className={`admin-tab ${activeTab === 'volunteers' ? 'active' : ''}`}
+          onClick={() => { setActiveTab('volunteers'); handleClickVolunteers() }}
+          disabled={volunteersLoading}
+        >
+          {volunteersLoading ? 'Loading…' : 'Volunteers'}
+        </button>
+        <button className={`admin-tab ${activeTab === 'shifts' ? 'active' : ''}`} onClick={() => setActiveTab('shifts')}>
+          Jobs & Shifts
+        </button>
+        <button className={`admin-tab ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
+          Manage Admins
+        </button>
+        <button className={`admin-tab ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => { setActiveTab('requests'); loadPending() }}>
+          Hour Requests
+          {pendingRequests.length > 0 && <span className="req-badge">{pendingRequests.length}</span>}
+        </button>
+      </nav>
+
+      <div className="admin-tab-content">
 
           {/* Volunteer list - shown when volunteers tab is active */}
           {activeTab === 'volunteers' && (
@@ -502,7 +506,6 @@ function AdminDashboard({
               )}
             </div>
           )}
-        </div>
       </div>
 
       {/* Admin control panel info box */}
