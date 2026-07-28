@@ -90,6 +90,8 @@ function ShiftBrowser({
         </div>
       </div>
 
+      <p className="tz-note">🕒 All shift times are shown in Pacific Time (PT)</p>
+
       {errorMessage && <div className="error-banner">{errorMessage}</div>}
 
       {loading ? (

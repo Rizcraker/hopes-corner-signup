@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabaseClient'
 import type { Shift } from '../types/shift'
 import { getOrdinalDay } from '../utils/shiftUtils'
 
+// Hope's Corner operates in Pacific time; all shift times are displayed in PT.
+export const PT_TZ = 'America/Los_Angeles'
+
 interface UseShiftsDeps {
   setErrorMessage: Dispatch<SetStateAction<string | null>>
 }
@@ -68,7 +71,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
   // Group shifts by calendar month for the Calendar view
   const shiftsByMonth = useMemo(
     () => shiftsByDate.reduce((acc, shift) => {
-      const monthKey = shift.startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      const monthKey = shift.startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: PT_TZ })
       if (!acc[monthKey]) acc[monthKey] = []
       acc[monthKey].push(shift)
       return acc
@@ -100,28 +103,34 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
             return null
           }
 
+          // Operations run in Pacific — render every shift time/date in PT so it's
+          // consistent for all viewers regardless of their own timezone.
           const formattedDate = startDate.toLocaleDateString('en-US', {
             weekday: 'short',
             month: 'short',
-            day: 'numeric'
+            day: 'numeric',
+            timeZone: PT_TZ
           } as const)
 
           const startTime = startDate.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: PT_TZ
           })
 
           const endTime = endDate.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: PT_TZ
           })
 
           // Full "Weekday, Month Xth" label used by the Job / Calendar accordions
-          const weekdayLong = startDate.toLocaleDateString('en-US', { weekday: 'long' })
-          const monthLong = startDate.toLocaleDateString('en-US', { month: 'long' })
-          const dateLabel = `${weekdayLong}, ${monthLong} ${getOrdinalDay(startDate.getDate())}`
+          const weekdayLong = startDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: PT_TZ })
+          const monthLong = startDate.toLocaleDateString('en-US', { month: 'long', timeZone: PT_TZ })
+          const dayNum = Number(startDate.toLocaleDateString('en-US', { day: 'numeric', timeZone: PT_TZ }))
+          const dateLabel = `${weekdayLong}, ${monthLong} ${getOrdinalDay(dayNum)}`
 
           return {
             id: shift.id,

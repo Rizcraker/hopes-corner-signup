@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { FormEvent, RefObject } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { UserInfo } from '../types/userInfo'
+import { useGroups } from './useGroups'
 
 // The auth listener and sign-out have to drive the shifts / user-info hooks, but those hooks in
 // turn need setErrorMessage from this one. Passing them through a ref breaks that cycle: App fills
@@ -49,7 +50,11 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   const [zipCode, setZipCode] = useState('');
   const [organization, setOrganization] = useState('');
   const [customGroup, setCustomGroup] = useState('');
-  const [groupOptions] = useState<string[]>(["Hope's Corner", "Local Church", "Community Group", "Other"]);
+
+  // Organizations come from the admin-managed `groups` table (readable pre-auth).
+  const { groups, fetchGroups } = useGroups();
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+  const groupOptions = [...groups.map(g => g.name), 'Other'];
 
   const resetProfileFields = () => {
     setFirstName('');

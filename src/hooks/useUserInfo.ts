@@ -202,9 +202,33 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
     }
   }
 
+  // Volunteer edits their own profile fields (address, birthday, contact, etc.).
+  const updateProfile = async (fields: Partial<UserInfo>) => {
+    if (!userSession?.user) return
+    setErrorMessage(null)
+    const editable: (keyof UserInfo)[] = [
+      'first_name', 'last_name', 'birthday', 'phone_number',
+      'emergency_contact_name', 'emergency_contact_phone',
+      'employer', 'street_address', 'city', 'zip_code', 'organization',
+    ]
+    const patch: Record<string, unknown> = {}
+    for (const k of editable) {
+      if (k in fields) patch[k] = k === 'birthday' ? (fields[k] || null) : fields[k]
+    }
+    const { data, error } = await supabase
+      .from('user_info')
+      .update(patch)
+      .eq('user_id', userSession.user.id)
+      .select()
+      .maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('Profile not updated (0 rows) — check that the own-row update policy is applied.')
+    setUserInfo(prev => (prev ? { ...prev, ...patch } as UserInfo : prev))
+  }
+
   const clearUserInfo = () => {
     setUserInfo(null)
   }
 
-  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift, addHoursVolunteered, clearUserInfo }
+  return { userInfo, setUserInfo, fetchUserInfo, updateActiveShifts, removeActiveShift, addHoursVolunteered, updateProfile, clearUserInfo }
 }

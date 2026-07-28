@@ -9,6 +9,7 @@ interface VolunteerDashboardProps {
   getUserName: () => string
   userInfo: UserInfo | null
   removeActiveShift: (shiftDescription: string) => Promise<void>
+  updateProfile: (fields: Partial<UserInfo>) => Promise<void>
   handleSignOut: () => Promise<void>
   shifts: Shift[]
   loading: boolean
@@ -34,6 +35,7 @@ function VolunteerDashboard({
   getUserName,
   userInfo,
   removeActiveShift,
+  updateProfile,
   handleSignOut,
   ...browser
 }: VolunteerDashboardProps) {
@@ -41,14 +43,19 @@ function VolunteerDashboard({
   const hoursApi = useHours()
   const [entries, setEntries] = useState<HourEntry[]>([])
   const [showRequest, setShowRequest] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [reqHours, setReqHours] = useState('')
   const [reqReason, setReqReason] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profile, setProfile] = useState<Partial<UserInfo>>({})
 
   const loadEntries = async () => {
     if (userId) setEntries(await hoursApi.fetchMyEntries(userId))
   }
   useEffect(() => { loadEntries() /* eslint-disable-next-line */ }, [userId])
+
+  const totalHours = userInfo?.hours_volunteered ?? 0
 
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,70 +77,113 @@ function VolunteerDashboard({
     }
   }
 
+  const openEdit = () => {
+    if (userInfo) {
+      setProfile({
+        first_name: userInfo.first_name, last_name: userInfo.last_name,
+        birthday: userInfo.birthday ? userInfo.birthday.slice(0, 10) : '',
+        phone_number: userInfo.phone_number,
+        emergency_contact_name: userInfo.emergency_contact_name,
+        emergency_contact_phone: userInfo.emergency_contact_phone,
+        employer: userInfo.employer, street_address: userInfo.street_address,
+        city: userInfo.city, zip_code: userInfo.zip_code, organization: userInfo.organization,
+      })
+    }
+    setShowEdit(true); setShowRequest(false)
+  }
+
+  const setField = (k: keyof UserInfo) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setProfile(p => ({ ...p, [k]: e.target.value }))
+
+  const saveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingProfile(true)
+    try {
+      await updateProfile(profile)
+      setShowEdit(false)
+      setMsg('Your info has been updated. ✅')
+      window.setTimeout(() => setMsg(null), 4000)
+    } catch (err: any) {
+      console.error('Error updating profile:', err)
+      setMsg('Could not update info: ' + (err?.message || 'please try again'))
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const printTimesheet = () => window.print()
+
   return (
     <div className="dashboard-container">
       <div className="welcome-banner">
         <div style={{ flex: 1, minWidth: '260px' }}>
           <h3>Welcome back, {getUserName()}!</h3>
           <p>Thank you for contributing your time and energy to Hope's Corner.</p>
-
-          {/* Database metric stats display */}
-          {userInfo && (
-            <div className="user-db-stats">
-              <div className="dash-stats-row">
-                <div className="stat-card">
-                  <span className="stat-value">{userInfo.hours_volunteered}</span>
-                  <span className="stat-label">Hours Volunteered</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-value">{userInfo.active_shifts.length}</span>
-                  <span className="stat-label">Upcoming Shifts</span>
-                </div>
-              </div>
-              {userInfo.active_shifts.length > 0 && (
-                <div className="active-shifts-list">
-                  <h4>Your Active Scheduled Shifts:</h4>
-                  <ul>
-                    {userInfo.active_shifts.map((shift, idx) => (
-                      <li key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                        <span>✅ {shift}</span>
-                        <button
-                          onClick={() => removeActiveShift(shift)}
-                          className="trash-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#c0392b',
-                            cursor: 'pointer',
-                            fontSize: '1.1rem',
-                            padding: '0',
-                            lineHeight: 1
-                          }}
-                          title="Remove shift"
-                        >
-                          ✕
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
         </div>
         <button onClick={handleSignOut} className="btn-secondary logout-btn">Log Out</button>
       </div>
 
-      {/* Volunteer timesheet — completed hours + request more */}
+      {/* My Volunteering hub — stats, upcoming shifts, profile, timesheet history */}
       {userInfo && (
         <div className="timesheet-box">
-          <div className="timesheet-head">
-            <h4>Your Volunteer Timesheet</h4>
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setShowRequest(s => !s)}>
-              {showRequest ? 'Close' : '＋ Request hours'}
-            </button>
+          {/* Print-only header */}
+          <div className="print-only print-header">
+            <h2>Hope's Corner — Volunteer Timesheet</h2>
+            <p>{`${userInfo.first_name ?? ''} ${userInfo.last_name ?? ''}`.trim()} · {userInfo.email}</p>
+            <p>Total hours: {totalHours} · Printed {new Date().toLocaleDateString()}</p>
           </div>
 
+          <div className="timesheet-head">
+            <h4>My Volunteering</h4>
+            <div className="timesheet-actions">
+              <button type="button" className="btn-secondary btn-sm" onClick={openEdit}>Edit my info</button>
+              <button type="button" className="btn-secondary btn-sm" onClick={printTimesheet}>🖨 Print</button>
+              <button type="button" className="btn-primary btn-sm" onClick={() => { setShowRequest(s => !s); setShowEdit(false) }}>
+                {showRequest ? 'Close' : '＋ Request hours'}
+              </button>
+            </div>
+          </div>
+
+          {/* Stats moved here */}
+          <div className="dash-stats-row">
+            <div className="stat-card">
+              <span className="stat-icon" aria-hidden="true">⏱️</span>
+              <span className="stat-value">{totalHours}</span>
+              <span className="stat-label">Hours Volunteered</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-icon" aria-hidden="true">📅</span>
+              <span className="stat-value">{userInfo.active_shifts.length}</span>
+              <span className="stat-label">Upcoming Shifts</span>
+            </div>
+          </div>
+
+          {msg && <div className="timesheet-msg">{msg}</div>}
+
+          {/* Edit-info form */}
+          {showEdit && (
+            <form className="profile-edit-form" onSubmit={saveProfile}>
+              <div className="profile-grid">
+                <label>First name<input type="text" value={profile.first_name ?? ''} onChange={setField('first_name')} /></label>
+                <label>Last name<input type="text" value={profile.last_name ?? ''} onChange={setField('last_name')} /></label>
+                <label>Birthday<input type="date" value={(profile.birthday as string) ?? ''} onChange={setField('birthday')} /></label>
+                <label>Phone<input type="tel" value={profile.phone_number ?? ''} onChange={setField('phone_number')} /></label>
+                <label>Emergency contact<input type="text" value={profile.emergency_contact_name ?? ''} onChange={setField('emergency_contact_name')} /></label>
+                <label>Emergency phone<input type="tel" value={profile.emergency_contact_phone ?? ''} onChange={setField('emergency_contact_phone')} /></label>
+                <label>Employer<input type="text" value={profile.employer ?? ''} onChange={setField('employer')} /></label>
+                <label>Organization<input type="text" value={profile.organization ?? ''} onChange={setField('organization')} /></label>
+                <label className="profile-wide">Street address<input type="text" value={profile.street_address ?? ''} onChange={setField('street_address')} /></label>
+                <label>City<input type="text" value={profile.city ?? ''} onChange={setField('city')} /></label>
+                <label>ZIP code<input type="text" value={profile.zip_code ?? ''} onChange={setField('zip_code')} /></label>
+              </div>
+              <div className="profile-edit-actions">
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button type="submit" className="btn-primary btn-sm" disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save changes'}</button>
+              </div>
+            </form>
+          )}
+
+          {/* Request-hours form */}
           {showRequest && (
             <form className="request-form" onSubmit={submitRequest}>
               <input
@@ -154,15 +204,30 @@ function VolunteerDashboard({
             </form>
           )}
 
-          {msg && <div className="timesheet-msg">{msg}</div>}
+          {/* Upcoming shifts (moved here) */}
+          {userInfo.active_shifts.length > 0 && (
+            <div className="active-shifts-list">
+              <h4>Upcoming Shifts</h4>
+              <ul>
+                {userInfo.active_shifts.map((shift, idx) => (
+                  <li key={idx}>
+                    <span>✅ {shift}</span>
+                    <button onClick={() => removeActiveShift(shift)} className="trash-btn" title="Remove shift">✕</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
+          {/* Volunteering history */}
+          <h4 className="timesheet-history-title">Volunteering History</h4>
           {entries.length === 0 ? (
             <p className="note-text">No hours logged yet. Completed shifts and approved requests will show up here.</p>
           ) : (
             <div className="timesheet-table-wrap">
               <table className="timesheet-table">
                 <thead>
-                  <tr><th>Date</th><th>Activity</th><th>Hours</th><th>Status</th></tr>
+                  <tr><th>Date</th><th>Activity / Job</th><th>Hours</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {entries.map(en => (

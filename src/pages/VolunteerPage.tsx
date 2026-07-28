@@ -71,6 +71,7 @@ function VolunteerPage({ auth, userInfoApi, shiftsApi }: VolunteerPageProps) {
           getUserName={auth.getUserName}
           userInfo={userInfoApi.userInfo}
           removeActiveShift={userInfoApi.removeActiveShift}
+          updateProfile={userInfoApi.updateProfile}
           handleSignOut={auth.handleSignOut}
           shifts={shiftsApi.shifts}
           loading={shiftsApi.loading}

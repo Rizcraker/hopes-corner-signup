@@ -2106,3 +2106,131 @@ button { font-family: var(--font-body); }
   .admin-toolbar { border-radius: var(--radius-lg); }
   .admin-tab { flex: 0 0 auto; font-size: 0.86rem; padding: 10px 14px; }
 }
+
+/* ---- Timesheet hub actions ---- */
+.timesheet-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.timesheet-history-title {
+  margin: 20px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hc-border);
+  color: var(--hc-green-dark);
+}
+.timesheet-box .dash-stats-row { margin-bottom: 6px; }
+.active-shifts-list li span:first-child { color: var(--hc-text-main); font-size: 0.92rem; }
+
+/* ---- Profile edit form ---- */
+.profile-edit-form {
+  background: var(--hc-green-light);
+  border: 1px solid var(--hc-green-mist);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin: 6px 0 14px;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 16px;
+}
+.profile-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hc-text-muted);
+}
+.profile-grid input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--hc-text-main);
+  background: var(--hc-white);
+}
+.profile-grid input:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+.profile-wide { grid-column: 1 / -1; }
+.profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ---- Admin organizations manager ---- */
+.org-add-form { display: flex; gap: 8px; margin: 8px 0 14px; flex-wrap: wrap; }
+.org-add-form input {
+  flex: 1 1 220px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+.org-add-form input:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+.org-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.org-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--hc-border);
+  border-radius: var(--radius-full);
+  background: var(--hc-green-light);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--hc-green-dark);
+}
+.org-chip-remove {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--hc-border);
+  color: var(--hc-green-dark);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.org-chip-remove:hover { background: var(--hc-danger); color: #fff; }
+
+/* ---- Timezone note ---- */
+.tz-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--hc-green-light);
+  color: var(--hc-green-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ---- Print: timesheet only ---- */
+.print-only { display: none; }
+.print-header h2 { margin: 0 0 4px; color: var(--hc-green-dark); }
+.print-header p { margin: 2px 0; color: var(--hc-text-muted); }
+
+@media print {
+  body * { visibility: hidden; }
+  .timesheet-box, .timesheet-box * { visibility: visible; }
+  .timesheet-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    background: #fff;
+  }
+  .timesheet-actions,
+  .request-form,
+  .profile-edit-form,
+  .active-shifts-list .trash-btn { display: none !important; }
+  .print-only { display: block !important; }
+  .print-header { margin-bottom: 16px; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+}

@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabaseClient'
 import { useState, useEffect, useMemo } from 'react'
 import { useHours } from '../../hooks/useHours'
 import type { PendingRequest } from '../../hooks/useHours'
+import { useGroups } from '../../hooks/useGroups'
+import { formatDateOnly, ageFromBirthday } from '../../utils/dateUtils'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -57,6 +59,23 @@ function AdminDashboard({
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
 
   const hoursApi = useHours()
+  const groupsApi = useGroups()
+  const [newGroup, setNewGroup] = useState('')
+
+  useEffect(() => { groupsApi.fetchGroups() }, [groupsApi.fetchGroups])
+
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newGroup.trim()) return
+    try { await groupsApi.addGroup(newGroup); setNewGroup('') }
+    catch (err) { alert('Failed to add organization: ' + errMsg(err)) }
+  }
+
+  const handleRemoveGroup = async (id: string, name: string) => {
+    if (!confirm(`Remove organization "${name}"?`)) return
+    try { await groupsApi.removeGroup(id) }
+    catch (err) { alert('Failed to remove organization: ' + errMsg(err)) }
+  }
 
   // Supabase errors are objects — pull out something human-readable.
   const errMsg = (err: any) =>
@@ -302,18 +321,8 @@ function AdminDashboard({
                       <div className="vol-col expand" aria-hidden="true"></div>
                     </div>
                     {filteredVolunteers.map(v => {
-                      // calculate age from birthday
-                      let ageDisplay: string | number = 'N/A'
-                      if (v.birthday) {
-                        const birth = new Date(v.birthday)
-                        const today = new Date()
-                        let age = today.getFullYear() - birth.getFullYear()
-                        const m = today.getMonth() - birth.getMonth()
-                        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-                          age--
-                        }
-                        ageDisplay = age
-                      }
+                      // age from birthday (local calendar date, no UTC shift)
+                      const ageDisplay: string | number = ageFromBirthday(v.birthday) ?? 'N/A'
                       const isAdmin = admins.some(a => a.user_id === v.user_id)
                       const isExpanded = expandedVolunteerId === v.user_id
                       return (
@@ -372,7 +381,7 @@ function AdminDashboard({
                               {/* Profile fields */}
                               <dl className="vol-detail-grid">
                                 <div className="vol-field"><dt>Phone</dt><dd>{v.phone_number || '—'}</dd></div>
-                                <div className="vol-field"><dt>Birthday</dt><dd>{v.birthday ? new Date(v.birthday).toLocaleDateString() : '—'}</dd></div>
+                                <div className="vol-field"><dt>Birthday</dt><dd>{formatDateOnly(v.birthday)}</dd></div>
                                 <div className="vol-field"><dt>Emergency contact</dt><dd>{v.emergency_contact_name || '—'}</dd></div>
                                 <div className="vol-field"><dt>Emergency phone</dt><dd>{v.emergency_contact_phone || '—'}</dd></div>
                                 <div className="vol-field"><dt>Employer</dt><dd>{v.employer || '—'}</dd></div>
@@ -470,6 +479,27 @@ function AdminDashboard({
                       <button className="btn-secondary btn-sm" onClick={() => handleMakeAdminClick(v.user_id)}>Make Admin</button>
                     </div>
                   ))}
+              </div>
+
+              <h4 style={{ marginTop: '1.75rem' }}>Organizations</h4>
+              <p className="note-text" style={{ marginTop: 0 }}>Groups volunteers can sign up under during registration.</p>
+              <form className="org-add-form" onSubmit={handleAddGroup}>
+                <input
+                  type="text"
+                  value={newGroup}
+                  onChange={(e) => setNewGroup(e.target.value)}
+                  placeholder="New organization name…"
+                />
+                <button type="submit" className="btn-primary btn-sm">Add</button>
+              </form>
+              <div className="org-chip-grid">
+                {groupsApi.groups.length === 0 && <p className="note-text">No organizations yet.</p>}
+                {groupsApi.groups.map(g => (
+                  <div key={g.id} className="org-chip">
+                    <span>{g.name}</span>
+                    <button className="org-chip-remove" onClick={() => handleRemoveGroup(g.id, g.name)} aria-label={`Remove ${g.name}`}>×</button>
+                  </div>
+                ))}
               </div>
             </div>
           )}

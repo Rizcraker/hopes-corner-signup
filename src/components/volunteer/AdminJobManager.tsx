@@ -227,6 +227,7 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
       {/* Add shift(s) */}
       <form onSubmit={createShifts} style={{ background: '#f9fbfa', border: '1px solid #e3efe9', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem' }}>
         <strong style={{ fontSize: '0.9rem' }}>Add shift(s)</strong>
+        <span className="tz-note" style={{ marginLeft: 8 }}>🕒 Enter times in Pacific Time (PT)</span>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', marginTop: '0.5rem' }}>
           <label style={fieldLabel}>Start date<input type="date" required value={date} onChange={e => setDate(e.target.value)} style={input} /></label>
           <label style={fieldLabel}>Start time<input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={input} /></label>
