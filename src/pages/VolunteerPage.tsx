@@ -44,6 +44,10 @@ function VolunteerPage({ auth, userInfoApi, shiftsApi }: VolunteerPageProps) {
           setLastName={auth.setLastName}
           birthday={auth.birthday}
           setBirthday={auth.setBirthday}
+          ageRange={auth.ageRange}
+          setAgeRange={auth.setAgeRange}
+          parentEmail={auth.parentEmail}
+          setParentEmail={auth.setParentEmail}
           phoneNumber={auth.phoneNumber}
           setPhoneNumber={auth.setPhoneNumber}
           emergencyContactName={auth.emergencyContactName}

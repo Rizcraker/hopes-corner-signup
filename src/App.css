@@ -2141,7 +2141,8 @@ button { font-family: var(--font-body); }
   letter-spacing: 0.04em;
   color: var(--hc-text-muted);
 }
-.profile-grid input {
+.profile-grid input,
+.profile-grid select {
   padding: 9px 12px;
   border: 1.5px solid var(--hc-border);
   border-radius: var(--radius-sm);
@@ -2152,7 +2153,11 @@ button { font-family: var(--font-body); }
   color: var(--hc-text-main);
   background: var(--hc-white);
 }
-.profile-grid input:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+.profile-grid input:focus,
+.profile-grid select:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45, 143, 107, 0.15); }
+
+.optional-tag { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--hc-text-muted); font-size: 0.72rem; }
+.field-hint { margin: 4px 0 0; font-size: 0.78rem; color: var(--hc-text-muted); }
 .profile-wide { grid-column: 1 / -1; }
 .profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 

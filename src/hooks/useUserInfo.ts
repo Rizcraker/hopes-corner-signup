@@ -20,7 +20,7 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
     try {
       const { data, error } = await supabase
         .from('user_info')
-        .select('user_id, hours_volunteered, active_shifts, first_name, last_name, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, organization, email')
+        .select('user_id, hours_volunteered, active_shifts, first_name, last_name, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, organization, email, age_range, parent_email')
         .eq('user_id', session.user.id)
         .single()
 
@@ -45,7 +45,9 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
             city: meta.city ?? '',
             zip_code: meta.zip_code ?? '',
             organization: meta.organization ?? '',
-            email: meta.email ?? ''
+            email: meta.email ?? '',
+            age_range: meta.age_range ?? null,
+            parent_email: meta.parent_email ?? null
           }
           const { error: insertError } = await supabase
             .from('user_info')
@@ -77,7 +79,9 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
           city: data.city ?? '',
           zip_code: data.zip_code ?? '',
           organization: data.organization ?? '',
-          email: data.email ?? ''
+          email: data.email ?? '',
+          age_range: data.age_range ?? null,
+          parent_email: data.parent_email ?? null
         })
       }
     } catch (error) {
@@ -106,6 +110,23 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
     if (!userSession?.user || !userInfo) return
     try {
       setErrorMessage(null)
+
+      // 14–15 volunteers can only sign up once a parent/guardian volunteer
+      // account is linked AND that account actually exists (verified).
+      if (userInfo.age_range === '14_15') {
+        if (!userInfo.parent_email) {
+          setErrorMessage('14–15 volunteers must link a parent/guardian volunteer account before signing up. Add it under "Edit my info".')
+          return
+        }
+        const { data: parentExists, error: pErr } = await supabase
+          .rpc('parent_account_exists', { p_email: userInfo.parent_email })
+        if (pErr) throw pErr
+        if (!parentExists) {
+          setErrorMessage('Your linked parent/guardian doesn’t have a volunteer account yet. Ask them to create one with that email, then try again.')
+          return
+        }
+      }
+
       const shiftDescription = `${shift.role} - ${shift.time}`
 
       if (userInfo.active_shifts.includes(shiftDescription)) {
@@ -210,6 +231,7 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
       'first_name', 'last_name', 'birthday', 'phone_number',
       'emergency_contact_name', 'emergency_contact_phone',
       'employer', 'street_address', 'city', 'zip_code', 'organization',
+      'age_range', 'parent_email',
     ]
     const patch: Record<string, unknown> = {}
     for (const k of editable) {

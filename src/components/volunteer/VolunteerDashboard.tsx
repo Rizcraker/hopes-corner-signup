@@ -3,6 +3,7 @@ import type { Shift } from '../../types/shift'
 import type { UserInfo } from '../../types/userInfo'
 import type { HourEntry } from '../../types/hourEntry'
 import { useHours } from '../../hooks/useHours'
+import { AGE_RANGES, parentLinkMode } from '../../utils/ageRange'
 import ShiftBrowser from '../shifts/ShiftBrowser'
 
 interface VolunteerDashboardProps {
@@ -81,6 +82,8 @@ function VolunteerDashboard({
     if (userInfo) {
       setProfile({
         first_name: userInfo.first_name, last_name: userInfo.last_name,
+        age_range: userInfo.age_range ?? '',
+        parent_email: userInfo.parent_email ?? '',
         birthday: userInfo.birthday ? userInfo.birthday.slice(0, 10) : '',
         phone_number: userInfo.phone_number,
         emergency_contact_name: userInfo.emergency_contact_name,
@@ -92,11 +95,15 @@ function VolunteerDashboard({
     setShowEdit(true); setShowRequest(false)
   }
 
-  const setField = (k: keyof UserInfo) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const setField = (k: keyof UserInfo) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setProfile(p => ({ ...p, [k]: e.target.value }))
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (profile.age_range === '14_15' && !((profile.parent_email as string) ?? '').trim()) {
+      setMsg('14–15 volunteers must provide a parent/guardian volunteer email.')
+      return
+    }
     setSavingProfile(true)
     try {
       await updateProfile(profile)
@@ -166,7 +173,25 @@ function VolunteerDashboard({
               <div className="profile-grid">
                 <label>First name<input type="text" value={profile.first_name ?? ''} onChange={setField('first_name')} /></label>
                 <label>Last name<input type="text" value={profile.last_name ?? ''} onChange={setField('last_name')} /></label>
-                <label>Birthday<input type="date" value={(profile.birthday as string) ?? ''} onChange={setField('birthday')} /></label>
+                <label>Age range
+                  <select value={(profile.age_range as string) ?? ''} onChange={setField('age_range')}>
+                    <option value="">Select…</option>
+                    {AGE_RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                </label>
+                {parentLinkMode(profile.age_range as string) !== 'none' && (
+                  <label className="profile-wide">
+                    Parent/guardian volunteer email{parentLinkMode(profile.age_range as string) === 'required' ? ' *' : ''}
+                    <input
+                      type="email"
+                      value={(profile.parent_email as string) ?? ''}
+                      onChange={setField('parent_email')}
+                      placeholder="parent@example.com"
+                      required={parentLinkMode(profile.age_range as string) === 'required'}
+                    />
+                  </label>
+                )}
+                <label>Birthday <span className="optional-tag">(optional)</span><input type="date" value={(profile.birthday as string) ?? ''} onChange={setField('birthday')} /></label>
                 <label>Phone<input type="tel" value={profile.phone_number ?? ''} onChange={setField('phone_number')} /></label>
                 <label>Emergency contact<input type="text" value={profile.emergency_contact_name ?? ''} onChange={setField('emergency_contact_name')} /></label>
                 <label>Emergency phone<input type="tel" value={profile.emergency_contact_phone ?? ''} onChange={setField('emergency_contact_phone')} /></label>

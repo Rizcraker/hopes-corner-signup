@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { AGE_RANGES, parentLinkMode } from '../../utils/ageRange'
 
 // All state is owned by useVolunteerAuth (called in App) and passed down, so an in-progress
 // registration survives navigating away from /volunteer and back, exactly as it does today.
@@ -24,6 +25,10 @@ interface AuthPanelProps {
   setLastName: (v: string) => void
   birthday: string
   setBirthday: (v: string) => void
+  ageRange: string
+  setAgeRange: (v: string) => void
+  parentEmail: string
+  setParentEmail: (v: string) => void
   phoneNumber: string
   setPhoneNumber: (v: string) => void
   emergencyContactName: string
@@ -69,6 +74,10 @@ function AuthPanel({
   setLastName,
   birthday,
   setBirthday,
+  ageRange,
+  setAgeRange,
+  parentEmail,
+  setParentEmail,
   phoneNumber,
   setPhoneNumber,
   emergencyContactName,
@@ -155,8 +164,37 @@ function AuthPanel({
                   <input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label htmlFor="birthday">Birthday *</label>
-                  <input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} required />
+                  <label htmlFor="ageRange">Age Range *</label>
+                  <select id="ageRange" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} required>
+                    <option value="">Select your age range</option>
+                    {AGE_RANGES.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {parentLinkMode(ageRange) !== 'none' && (
+                  <div className="form-group">
+                    <label htmlFor="parentEmail">
+                      Parent/Guardian Volunteer Email{parentLinkMode(ageRange) === 'required' ? ' *' : ''}
+                    </label>
+                    <input
+                      id="parentEmail"
+                      type="email"
+                      value={parentEmail}
+                      onChange={(e) => setParentEmail(e.target.value)}
+                      placeholder="parent@example.com"
+                      required={parentLinkMode(ageRange) === 'required'}
+                    />
+                    <p className="field-hint">
+                      {parentLinkMode(ageRange) === 'required'
+                        ? '14–15 volunteers must link a parent/guardian who has a volunteer account — you can’t sign up for shifts without it.'
+                        : 'Optional — link a parent or guardian who also volunteers.'}
+                    </p>
+                  </div>
+                )}
+                <div className="form-group">
+                  <label htmlFor="birthday">Birthday <span className="optional-tag">(optional)</span></label>
+                  <input id="birthday" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="phoneNumber">Phone Number *</label>

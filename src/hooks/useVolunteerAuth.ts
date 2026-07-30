@@ -40,7 +40,9 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
 
   // profile fields
   const [lastName, setLastName] = useState('');
-  const [birthday, setBirthday] = useState('');
+  const [birthday, setBirthday] = useState('');        // optional now
+  const [ageRange, setAgeRange] = useState('');         // operational eligibility field
+  const [parentEmail, setParentEmail] = useState('');   // linked parent/guardian (minors)
   const [phoneNumber, setPhoneNumber] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
@@ -60,6 +62,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     setFirstName('');
     setLastName('');
     setBirthday('');
+    setAgeRange('');
+    setParentEmail('');
     setPhoneNumber('');
     setEmergencyContactName('');
     setEmergencyContactPhone('');
@@ -140,6 +144,11 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
           // Move to next step (profile info)
           setRegistrationStep(2)
         } else if (registrationStep === 2) {
+          // 14–15 volunteers must link a parent/guardian.
+          if (ageRange === '14_15' && !parentEmail.trim()) {
+            setErrorMessage('14–15 volunteers must provide a parent/guardian volunteer email to sign up.')
+            return
+          }
           // Perform sign up with profile data
           const finalOrganization = organization === 'Other' ? customGroup : organization;
           const { data, error } = await supabase.auth.signUp({
@@ -149,7 +158,9 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
               data: {
                 first_name: firstName,
                 last_name: lastName,
-                birthday: birthday,
+                birthday: birthday || null,
+                age_range: ageRange || null,
+                parent_email: parentEmail || null,
                 phone_number: phoneNumber,
                 emergency_contact_name: emergencyContactName,
                 emergency_contact_phone: emergencyContactPhone,
@@ -174,6 +185,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
             setFirstName('')
             setLastName('')
             setBirthday('')
+            setAgeRange('')
+            setParentEmail('')
             setPhoneNumber('')
             setEmergencyContactName('')
             setEmergencyContactPhone('')
@@ -229,6 +242,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     registrationStep, setRegistrationStep,
     lastName, setLastName,
     birthday, setBirthday,
+    ageRange, setAgeRange,
+    parentEmail, setParentEmail,
     phoneNumber, setPhoneNumber,
     emergencyContactName, setEmergencyContactName,
     emergencyContactPhone, setEmergencyContactPhone,

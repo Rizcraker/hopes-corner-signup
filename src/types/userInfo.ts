@@ -16,4 +16,6 @@ export interface UserInfo {
   email: string;
   can_self_report?: boolean;
   first_volunteered_at?: string | null;
+  age_range?: string | null;
+  parent_email?: string | null;
 }

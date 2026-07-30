@@ -7,6 +7,7 @@ import { useHours } from '../../hooks/useHours'
 import type { PendingRequest } from '../../hooks/useHours'
 import { useGroups } from '../../hooks/useGroups'
 import { formatDateOnly, ageFromBirthday } from '../../utils/dateUtils'
+import { ageRangeShort, ageRangeLabel } from '../../utils/ageRange'
 
 interface AdminDashboardProps {
   getUserName: () => string
@@ -337,7 +338,7 @@ function AdminDashboard({
                               {isAdmin && <span className="vol-admin-dot" title="Admin">🛡️</span>}
                             </div>
                             <div className="vol-col email">{v.email ?? ''}</div>
-                            <div className="vol-col age"><span className="age-pill">{ageDisplay}</span></div>
+                            <div className="vol-col age"><span className="age-pill">{v.age_range ? ageRangeShort(v.age_range) : ageDisplay}</span></div>
                             <div className="vol-col expand"><span className="expand-chevron">▾</span></div>
                           </div>
                           {isExpanded && (
@@ -381,7 +382,9 @@ function AdminDashboard({
                               {/* Profile fields */}
                               <dl className="vol-detail-grid">
                                 <div className="vol-field"><dt>Phone</dt><dd>{v.phone_number || '—'}</dd></div>
+                                <div className="vol-field"><dt>Age range</dt><dd>{ageRangeLabel(v.age_range)}</dd></div>
                                 <div className="vol-field"><dt>Birthday</dt><dd>{formatDateOnly(v.birthday)}</dd></div>
+                                {v.parent_email && <div className="vol-field"><dt>Linked parent</dt><dd>👪 {v.parent_email}</dd></div>}
                                 <div className="vol-field"><dt>Emergency contact</dt><dd>{v.emergency_contact_name || '—'}</dd></div>
                                 <div className="vol-field"><dt>Emergency phone</dt><dd>{v.emergency_contact_phone || '—'}</dd></div>
                                 <div className="vol-field"><dt>Employer</dt><dd>{v.employer || '—'}</dd></div>
