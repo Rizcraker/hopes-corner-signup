@@ -5,7 +5,9 @@ interface ShiftCardProps {
   onSignUp: (shift: Shift) => Promise<void>
 }
 
-// Shared shift detail card used across the Job / Date / Calendar views so signup behaves identically everywhere
+// Shared shift card used across the Job / Date / Calendar views so signup behaves identically
+// everywhere. With title/description/requirements gone from the shifts table (sourced from the
+// parent job now), the card shows the job title, time, and open spots only.
 function ShiftCard({ shift, onSignUp }: ShiftCardProps) {
   return (
     <div className="shift-card">
@@ -15,9 +17,6 @@ function ShiftCard({ shift, onSignUp }: ShiftCardProps) {
       </div>
       <div className="shift-card-body">
         <p><strong>📅 Time:</strong> {shift.dateLabel} · {shift.timeLabel}</p>
-        <p><strong>📍 Location:</strong> {shift.location}</p>
-        <p><strong>📝 Description:</strong> {shift.description}</p>
-        <div className="shift-requirements"><strong>⚠️ Requirements:</strong> {shift.requirements}</div>
       </div>
       <div className="shift-card-footer">
         <button

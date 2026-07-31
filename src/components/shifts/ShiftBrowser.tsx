@@ -50,8 +50,8 @@ function ShiftBrowser({
   const matches = (s: Shift) =>
     !term ||
     s.role.toLowerCase().includes(term) ||
-    s.location.toLowerCase().includes(term) ||
-    s.description.toLowerCase().includes(term)
+    s.dateLabel.toLowerCase().includes(term) ||
+    s.timeLabel.toLowerCase().includes(term)
 
   return (
     <div className="shifts-section">
@@ -71,7 +71,7 @@ function ShiftBrowser({
         <div className="shift-search">
           <input
             type="text"
-            placeholder="Search shifts by job, location, or description…"
+            placeholder="Search shifts by job, date, or time…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search shifts"

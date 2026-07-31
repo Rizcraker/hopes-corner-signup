@@ -82,16 +82,27 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
   const fetchShifts = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('shifts')
-        .select('id, title, description, spots_left, shift_start, shift_end, location, requirements, job_id, capacity, password')
-
+      // title/description/requirements were dropped from the shifts table; a shift's heading now
+      // comes from its parent job's `name`. Resolve job_id → name once (jobs must be SELECT-able by
+      // authenticated users) so each shift carries a useful `role` for grouping + the card title.
+      const [shiftsRes, jobsRes] = await Promise.all([
+        supabase
+          .from('shifts')
+          .select('id, spots_left, shift_start, shift_end, job_id'),
+        supabase.from('jobs').select('id, name'),
+      ])
+      const { data, error } = shiftsRes
+      // If jobs aren't readable (RLS), jobsRes.error is set — keep going so the shift list still
+      // renders; affected shifts fall back to a generic role instead of crashing the fetch.
+      if (jobsRes.error) console.warn('Could not load job titles:', jobsRes.error.message)
       if (error) throw error
 
-      const mappedShifts = data
+      const jobNameById = new Map<string, string>((jobsRes.data ?? []).map((j) => [j.id, j.name]))
+
+      const mappedShifts = (data ?? [])
         .map(shift => {
           // Validate required fields
-          if (!shift.title || !shift.shift_start || !shift.shift_end) {
+          if (!shift.shift_start || !shift.shift_end) {
             return null
           }
 
@@ -134,18 +145,13 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
 
           return {
             id: shift.id,
-            role: shift.title,
+            role: (shift.job_id && jobNameById.get(shift.job_id)) || 'General',
             time: `${formattedDate} · ${startTime} - ${endTime}`,
-            location: shift.location || 'Location TBD',
-            description: shift.description || 'Description not available',
-            requirements: shift.requirements || 'Requirements TBD',
             spotsLeft: shift.spots_left ?? 0,
             startDate,
             dateLabel,
             timeLabel: `${startTime} - ${endTime}`,
             jobId: shift.job_id ?? null,
-            capacity: shift.capacity ?? null,
-            password: shift.password ?? null
           }
         })
         .filter((shift): shift is Shift => shift !== null)
