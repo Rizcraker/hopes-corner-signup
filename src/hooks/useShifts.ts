@@ -82,15 +82,19 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
   const fetchShifts = async () => {
     setLoading(true)
     try {
+      // title/description/requirements were dropped from the shifts table; a shift's
+      // heading and eligibility metadata come from its parent job. One query with an
+      // embedded join: RLS on `jobs` hides invisible jobs from non-admins, in which
+      // case the embed is null and the browser filters that shift out via `hasJob`.
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, description, location, requirements, min_age, visible )')
+        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, min_age, visible )')
 
       if (error) throw error
 
-      const mappedShifts = data
+      const mappedShifts = (data ?? [])
         .map((shift: any) => {
-          // A shift needs valid times; its descriptive info now lives on the job.
+          // A shift needs valid times; its descriptive info lives on the job.
           if (!shift.shift_start || !shift.shift_end) {
             return null
           }
@@ -137,17 +141,15 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
 
           return {
             id: shift.id,
-            role: job?.name ?? 'Unassigned',
+            role: job?.name || 'General',
             time: `${formattedDate} · ${startTime} - ${endTime}`,
-            location: job?.location || 'Location TBD',
-            description: job?.description || 'Description not available',
-            requirements: job?.requirements || (job ? `Age ${job.min_age}+` : 'Requirements TBD'),
             spotsLeft: shift.spots_left ?? 0,
             startDate,
             dateLabel,
             timeLabel: `${startTime} - ${endTime}`,
             jobId: shift.job_id ?? null,
-            password: job?.password ?? null,
+            // Not selected client-side on purpose — job passwords stay admin-only.
+            password: null as string | null,
             minAge: job?.min_age ?? null,
             jobVisible: job?.visible ?? false,
             hasJob: !!job,

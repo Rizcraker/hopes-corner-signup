@@ -50,8 +50,8 @@ function ShiftBrowser({
   const matches = (s: Shift) =>
     !term ||
     s.role.toLowerCase().includes(term) ||
-    s.location.toLowerCase().includes(term) ||
-    s.description.toLowerCase().includes(term)
+    s.dateLabel.toLowerCase().includes(term) ||
+    s.timeLabel.toLowerCase().includes(term)
   // Volunteers only see shifts that belong to a visible job (hidden/team-lead jobs
   // are filtered out by RLS, but guard here too), and that match the search.
   const showShift = (s: Shift) => s.hasJob && s.jobVisible && matches(s)
@@ -74,7 +74,7 @@ function ShiftBrowser({
         <div className="shift-search">
           <input
             type="text"
-            placeholder="Search shifts by job, location, or description…"
+            placeholder="Search shifts by job, date, or time…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search shifts"
