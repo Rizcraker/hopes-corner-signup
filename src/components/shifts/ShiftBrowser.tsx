@@ -52,6 +52,9 @@ function ShiftBrowser({
     s.role.toLowerCase().includes(term) ||
     s.location.toLowerCase().includes(term) ||
     s.description.toLowerCase().includes(term)
+  // Volunteers only see shifts that belong to a visible job (hidden/team-lead jobs
+  // are filtered out by RLS, but guard here too), and that match the search.
+  const showShift = (s: Shift) => s.hasJob && s.jobVisible && matches(s)
 
   return (
     <div className="shifts-section">
@@ -98,37 +101,46 @@ function ShiftBrowser({
         <div className="loading-spinner">Loading shift schedule...</div>
       ) : shifts.length === 0 ? (
         <p className="note-text">No shifts are currently posted. Check back soon!</p>
-      ) : !shifts.some(matches) ? (
+      ) : !shifts.some(showShift) ? (
         <p className="note-text">No shifts match “{query}”. Try a different search.</p>
       ) : sortMode === 'job' ? (
-        /* ---------- JOB VIEW: accordion grouped by role, expand to reveal individual dates ---------- */
+        /* ---------- JOB VIEW: job → date (all shifts that day, incl. double shifts) ---------- */
         <div className="job-accordion">
           {jobGroupNames.map((role, groupIndex) => {
-            const group = shiftsByJob[role].filter(matches)
+            const group = shiftsByJob[role].filter(showShift)
             if (group.length === 0) return null
             const isOpen = expandedJobs.has(role) || !!term
+            const dayLabels = Array.from(new Set(group.map(s => s.dateLabel)))
             return (
               <div key={role} className="job-group">
                 <button type="button" className="job-group-header" onClick={() => toggleJobGroup(role)}>
                   <span className={`job-group-toggle-icon ${isOpen ? 'open' : ''}`}>▸</span>
                   <span className="job-group-title">{groupIndex + 1}. {role}</span>
-                  <span className="spots-badge">{group.length} date{group.length !== 1 ? 's' : ''}</span>
+                  <span className="spots-badge">{dayLabels.length} date{dayLabels.length !== 1 ? 's' : ''}</span>
                 </button>
                 {isOpen && (
                   <div className="job-group-body">
-                    {group.map(shift => {
-                      const dateKey = `${role}-${shift.id}`
-                      const dateOpen = expandedDateKeys.has(dateKey)
+                    {dayLabels.map(dayLabel => {
+                      const dayShifts = group.filter(s => s.dateLabel === dayLabel)
+                      const dateKey = `${role}-${dayLabel}`
+                      const dateOpen = expandedDateKeys.has(dateKey) || !!term
+                      const totalSpots = dayShifts.reduce((n, s) => n + s.spotsLeft, 0)
                       return (
-                        <div key={shift.id} className="job-date-entry">
+                        <div key={dateKey} className="job-date-entry">
                           <button type="button" className="job-date-header" onClick={() => toggleDateEntry(dateKey)}>
                             <span className={`job-date-toggle-icon ${dateOpen ? 'open' : ''}`}>+</span>
-                            <span className="job-date-label">{shift.dateLabel}</span>
-                            <span className="spots-badge">{shift.spotsLeft} spots left</span>
+                            <span className="job-date-label">{dayLabel}</span>
+                            <span className="spots-badge">
+                              {dayShifts.length > 1 ? `${dayShifts.length} shifts · ` : ''}{totalSpots} spots left
+                            </span>
                           </button>
                           {dateOpen && (
                             <div className="job-date-details">
-                              <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
+                              <div className="shifts-grid">
+                                {dayShifts.map(shift => (
+                                  <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -143,11 +155,11 @@ function ShiftBrowser({
       ) : sortMode === 'date' ? (
         /* ---------- DATE VIEW: flat chronological list, grouped by day ---------- */
         <div className="date-view">
-          {Array.from(new Set(shiftsByDate.filter(matches).map(s => s.dateLabel))).map(dateLabel => (
+          {Array.from(new Set(shiftsByDate.filter(showShift).map(s => s.dateLabel))).map(dateLabel => (
             <div key={dateLabel} className="date-block">
               <h4 className="date-block-title">{dateLabel}</h4>
               <div className="shifts-grid">
-                {shiftsByDate.filter(s => s.dateLabel === dateLabel && matches(s)).map(shift => (
+                {shiftsByDate.filter(s => s.dateLabel === dateLabel && showShift(s)).map(shift => (
                   <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
                 ))}
               </div>
@@ -158,7 +170,7 @@ function ShiftBrowser({
         /* ---------- CALENDAR VIEW: pick a day, see what's available ---------- */
         <div className="calendar-view">
           {Object.entries(shiftsByMonth).map(([month, allMonthShifts]) => {
-            const monthShifts = allMonthShifts.filter(matches)
+            const monthShifts = allMonthShifts.filter(showShift)
             if (monthShifts.length === 0) return null
             const uniqueDayKeys = Array.from(new Set(monthShifts.map(s => s.startDate.toDateString())))
             return (
@@ -191,7 +203,7 @@ function ShiftBrowser({
                 Shifts on {shiftsByDate.find(s => s.startDate.toDateString() === selectedCalendarDay)?.dateLabel}
               </h4>
               <div className="shifts-grid">
-                {shiftsByDate.filter(s => s.startDate.toDateString() === selectedCalendarDay && matches(s)).map(shift => (
+                {shiftsByDate.filter(s => s.startDate.toDateString() === selectedCalendarDay && showShift(s)).map(shift => (
                   <ShiftCard key={shift.id} shift={shift} onSignUp={onSignUp} />
                 ))}
               </div>

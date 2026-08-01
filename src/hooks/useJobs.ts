@@ -30,6 +30,8 @@ export function useJobs() {
     const { error } = await supabase.from('jobs').insert({
       name: fields.name,
       description: fields.description ?? null,
+      requirements: fields.requirements ?? null,
+      location: fields.location ?? null,
       visible: fields.visible ?? true,
       password: fields.password || null,
       min_age: fields.min_age ?? 16,
@@ -41,7 +43,7 @@ export function useJobs() {
 
   const updateJob = useCallback(async (id: string, fields: Partial<Job>) => {
     const patch: Record<string, unknown> = {}
-    for (const k of ['name', 'description', 'visible', 'password', 'min_age', 'self_report'] as const) {
+    for (const k of ['name', 'description', 'requirements', 'location', 'visible', 'password', 'min_age', 'self_report'] as const) {
       if (k in fields) patch[k] = k === 'password' ? (fields[k] || null) : fields[k]
     }
     const { error } = await supabase.from('jobs').update(patch).eq('id', id)

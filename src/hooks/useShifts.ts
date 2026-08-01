@@ -84,16 +84,19 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
     try {
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, title, description, spots_left, shift_start, shift_end, location, requirements, job_id, capacity, password')
+        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, description, location, requirements, min_age, visible )')
 
       if (error) throw error
 
       const mappedShifts = data
-        .map(shift => {
-          // Validate required fields
-          if (!shift.title || !shift.shift_start || !shift.shift_end) {
+        .map((shift: any) => {
+          // A shift needs valid times; its descriptive info now lives on the job.
+          if (!shift.shift_start || !shift.shift_end) {
             return null
           }
+          // Supabase returns the embedded job as an object (may be null if the job
+          // is hidden from this viewer via RLS, or the shift has no job).
+          const job = Array.isArray(shift.jobs) ? shift.jobs[0] : shift.jobs
 
           const startDate = new Date(shift.shift_start)
           const endDate = new Date(shift.shift_end)
@@ -134,18 +137,21 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
 
           return {
             id: shift.id,
-            role: shift.title,
+            role: job?.name ?? 'Unassigned',
             time: `${formattedDate} · ${startTime} - ${endTime}`,
-            location: shift.location || 'Location TBD',
-            description: shift.description || 'Description not available',
-            requirements: shift.requirements || 'Requirements TBD',
+            location: job?.location || 'Location TBD',
+            description: job?.description || 'Description not available',
+            requirements: job?.requirements || (job ? `Age ${job.min_age}+` : 'Requirements TBD'),
             spotsLeft: shift.spots_left ?? 0,
             startDate,
             dateLabel,
             timeLabel: `${startTime} - ${endTime}`,
             jobId: shift.job_id ?? null,
-            capacity: shift.capacity ?? null,
-            password: shift.password ?? null
+            password: job?.password ?? null,
+            minAge: job?.min_age ?? null,
+            jobVisible: job?.visible ?? false,
+            hasJob: !!job,
+            recurrenceGroup: shift.recurrence_group ?? null,
           }
         })
         .filter((shift): shift is Shift => shift !== null)

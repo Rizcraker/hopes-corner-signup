@@ -41,7 +41,7 @@ export default function ShiftRoster({ shift, otherShifts }: { shift: Shift; othe
   return (
     <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 8, padding: '1rem', marginTop: '0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <strong>Roster — {roster.filter(r => r.status !== 'cancelled').length}/{shift.capacity ?? '?'} filled</strong>
+        <strong>Roster — {roster.filter(r => r.status !== 'cancelled').length} signed up · {shift.spotsLeft} spots left</strong>
         <button onClick={load} className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}>Refresh</button>
       </div>
 

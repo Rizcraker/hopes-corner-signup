@@ -10,6 +10,9 @@ export interface Shift {
   dateLabel: string
   timeLabel: string
   jobId: string | null
-  capacity: number | null
   password: string | null
+  minAge: number | null
+  jobVisible: boolean
+  hasJob: boolean
+  recurrenceGroup: string | null
 }

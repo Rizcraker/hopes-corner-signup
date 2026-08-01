@@ -115,7 +115,7 @@ function AdminDashboard({
       setVolunteers(data)
     } catch (err) {
       console.error('Error fetching volunteers:', err)
-      alert('Failed to load volunteers: ' + err)
+      alert('Failed to load volunteers: ' + errMsg(err))
     } finally {
       setVolunteersLoading(false)
     }
@@ -130,7 +130,7 @@ function AdminDashboard({
       setAdmins(data)
     } catch (err) {
       console.error('Error fetching admins:', err)
-      alert('Failed to load admins: ' + err)
+      alert('Failed to load admins: ' + errMsg(err))
     }
   }
 

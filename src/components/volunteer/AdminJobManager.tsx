@@ -13,7 +13,7 @@ interface Props {
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const blankJobForm = { name: '', description: '', min_age: 16, visible: true, self_report: false, password: '' }
+const blankJobForm = { name: '', description: '', requirements: '', location: '', min_age: 16, visible: true, self_report: false, password: '' }
 
 export default function AdminJobManager({ shifts, loading, fetchShifts }: Props) {
   const { jobs, fetchJobs, createJob, updateJob, deleteJob } = useJobs()
@@ -56,7 +56,8 @@ export default function AdminJobManager({ shifts, loading, fetchShifts }: Props)
   const startEdit = (j: Job) => {
     setEditingJob(j)
     setJobForm({
-      name: j.name, description: j.description ?? '', min_age: j.min_age,
+      name: j.name, description: j.description ?? '', requirements: j.requirements ?? '',
+      location: j.location ?? '', min_age: j.min_age,
       visible: j.visible, self_report: j.self_report, password: j.password ?? '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -86,8 +87,14 @@ export default function AdminJobManager({ shifts, loading, fetchShifts }: Props)
           <label style={fieldLabel}>Minimum age
             <input type="number" min={0} value={jobForm.min_age} onChange={e => setJobForm({ ...jobForm, min_age: Number(e.target.value) || 0 })} style={input} />
           </label>
+          <label style={fieldLabel}>Location
+            <input value={jobForm.location} onChange={e => setJobForm({ ...jobForm, location: e.target.value })} placeholder="e.g. Main Hall / Kitchen" style={input} />
+          </label>
           <label style={{ ...fieldLabel, gridColumn: '1 / -1' }}>Description
             <textarea value={jobForm.description} onChange={e => setJobForm({ ...jobForm, description: e.target.value })} rows={2} style={{ ...input, resize: 'vertical' }} />
+          </label>
+          <label style={{ ...fieldLabel, gridColumn: '1 / -1' }}>Requirements
+            <textarea value={jobForm.requirements} onChange={e => setJobForm({ ...jobForm, requirements: e.target.value })} rows={2} placeholder="e.g. Age 16+, able to stand 3 hrs" style={{ ...input, resize: 'vertical' }} />
           </label>
           <label style={fieldLabel}>Password (optional)
             <input value={jobForm.password} onChange={e => setJobForm({ ...jobForm, password: e.target.value })} placeholder="Leave blank = open" style={input} />
@@ -148,7 +155,6 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('11:00')
   const [capacity, setCapacity] = useState(5)
-  const [password, setPassword] = useState('')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [repeatWeeks, setRepeatWeeks] = useState(1)
   const [openRoster, setOpenRoster] = useState<string | null>(null)
@@ -169,16 +175,15 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
     return out
   }
 
-  const buildRow = (d: Date) => {
+  // A thin shift row: just times, spots, and the job it belongs to.
+  const buildRow = (d: Date, group: string | null) => {
     const [sh, sm] = startTime.split(':').map(Number)
     const [eh, em] = endTime.split(':').map(Number)
     const start = new Date(d); start.setHours(sh, sm, 0, 0)
     const end = new Date(d); end.setHours(eh, em, 0, 0)
     return {
-      title: job.name, description: job.description ?? '',
-      location: '', requirements: `Age ${job.min_age}+`,
       shift_start: start.toISOString(), shift_end: end.toISOString(),
-      spots_left: capacity, capacity, password: password || null, job_id: job.id,
+      spots_left: capacity, job_id: job.id, recurrence_group: group,
     }
   }
 
@@ -187,7 +192,9 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
     const dates = targetDates()
     if (dates.length === 0) { onFail('Pick a start date.'); return }
     try {
-      const { error } = await supabase.from('shifts').insert(dates.map(buildRow))
+      // A repeated batch shares one recurrence group so it can be managed together.
+      const group = dates.length > 1 ? crypto.randomUUID() : null
+      const { error } = await supabase.from('shifts').insert(dates.map(d => buildRow(d, group)))
       if (error) throw error
       await fetchShifts()
       onFlash(`Created ${dates.length} shift(s)`)
@@ -199,14 +206,14 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
     if (jobShifts.length === 0) { onFail('No shifts to copy.'); return }
     if (!confirm(`Copy all ${jobShifts.length} shift(s) forward by one year?`)) return
     try {
+      const group = crypto.randomUUID()
       const rows = await Promise.all(jobShifts.map(async s => {
         const { data } = await supabase.from('shifts').select('shift_start, shift_end').eq('id', s.id).single()
         const start = new Date(data!.shift_start); start.setFullYear(start.getFullYear() + 1)
         const end = new Date(data!.shift_end); end.setFullYear(end.getFullYear() + 1)
         return {
-          title: job.name, description: job.description ?? '', location: '', requirements: `Age ${job.min_age}+`,
           shift_start: start.toISOString(), shift_end: end.toISOString(),
-          spots_left: s.capacity ?? s.spotsLeft, capacity: s.capacity ?? s.spotsLeft, password: s.password, job_id: job.id,
+          spots_left: s.spotsLeft, job_id: job.id, recurrence_group: group,
         }
       }))
       const { error } = await supabase.from('shifts').insert(rows)
@@ -233,7 +240,6 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
           <label style={fieldLabel}>Start time<input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={input} /></label>
           <label style={fieldLabel}>End time<input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={input} /></label>
           <label style={fieldLabel}>Volunteers needed<input type="number" min={1} value={capacity} onChange={e => setCapacity(Number(e.target.value) || 1)} style={input} /></label>
-          <label style={fieldLabel}>Shift password<input value={password} onChange={e => setPassword(e.target.value)} placeholder="Optional" style={input} /></label>
         </div>
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontSize: '0.82rem', color: '#555' }}>Repeat on: </span>
@@ -263,7 +269,7 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{s.dateLabel}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#666' }}>{s.timeLabel} · {s.spotsLeft}/{s.capacity ?? '?'} spots {s.password && '· 🔒'}</div>
+                  <div style={{ fontSize: '0.85rem', color: '#666' }}>{s.timeLabel} · {s.spotsLeft} spots left</div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   <button onClick={() => setOpenRoster(openRoster === s.id ? null : s.id)} className="btn-secondary" style={miniBtn}>{openRoster === s.id ? 'Hide roster' : 'Roster'}</button>
