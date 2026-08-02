@@ -17,6 +17,12 @@ function ShiftCard({ shift, onSignUp }: ShiftCardProps) {
       </div>
       <div className="shift-card-body">
         <p><strong>📅 Time:</strong> {shift.dateLabel} · {shift.timeLabel}</p>
+        {shift.jobDescription && (
+          <p className="shift-card-desc">{shift.jobDescription}</p>
+        )}
+        {shift.jobRequirements && (
+          <p className="shift-card-reqs"><strong>Requirements:</strong> {shift.jobRequirements}</p>
+        )}
       </div>
       <div className="shift-card-footer">
         <button

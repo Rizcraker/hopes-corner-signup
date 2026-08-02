@@ -13,6 +13,8 @@ export interface Shift {
   password: string | null
   minAge: number | null
   jobVisible: boolean
+  jobDescription: string | null
+  jobRequirements: string | null
   hasJob: boolean
   recurrenceGroup: string | null
 }

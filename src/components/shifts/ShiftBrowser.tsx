@@ -52,9 +52,14 @@ function ShiftBrowser({
     s.role.toLowerCase().includes(term) ||
     s.dateLabel.toLowerCase().includes(term) ||
     s.timeLabel.toLowerCase().includes(term)
-  // Volunteers only see shifts that belong to a visible job (hidden/team-lead jobs
-  // are filtered out by RLS, but guard here too), and that match the search.
-  const showShift = (s: Shift) => s.hasJob && s.jobVisible && matches(s)
+  // A shift renders only if it belongs to a visible job (hidden/team-lead jobs are
+  // filtered out by RLS, but guard here too), matches the search, and still has open
+  // spots (spots_left <= 0 hides full shifts). `shifts` itself is NOT filtered to drop
+  // full shifts: it's owned by useShifts and shared with admins, and removeActiveShift
+  // searches it by description to find the shift whose spots to restore on cancel — a
+  // just-went-to-0 shift has to stay findable. Keep this filter at the presentation layer.
+  const isAvailable = (s: Shift) => s.hasJob && s.jobVisible && matches(s)
+  const showShift = (s: Shift) => isAvailable(s) && s.spotsLeft > 0
 
   return (
     <div className="shifts-section">
@@ -102,7 +107,13 @@ function ShiftBrowser({
       ) : shifts.length === 0 ? (
         <p className="note-text">No shifts are currently posted. Check back soon!</p>
       ) : !shifts.some(showShift) ? (
-        <p className="note-text">No shifts match “{query}”. Try a different search.</p>
+        // No shift passed the filter. Distinguish "everything matching is full" from
+        // "nothing matched the search/visibility" so the empty state isn't misleading.
+        shifts.some(isAvailable) ? (
+          <p className="note-text">All matching shifts are full. Try a different search or check back soon!</p>
+        ) : (
+          <p className="note-text">No shifts match “{query}”. Try a different search.</p>
+        )
       ) : sortMode === 'job' ? (
         /* ---------- JOB VIEW: job → date (all shifts that day, incl. double shifts) ---------- */
         <div className="job-accordion">

@@ -661,6 +661,19 @@ button { font-family: var(--font-body); }
 
 .shift-card-body p { margin: 0 0 8px; }
 
+/* Job description (muted) and requirements (highlighted eligibility callout),
+   surfaced on each card from the parent job. */
+.shift-card-desc { color: var(--hc-text-muted); }
+
+.shift-card-reqs {
+  background: var(--hc-accent-soft);
+  border-left: 3px solid var(--hc-accent);
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--hc-text-main);
+  font-size: 0.86rem;
+}
+
 .spots-badge {
   background: var(--hc-accent);
   color: white;

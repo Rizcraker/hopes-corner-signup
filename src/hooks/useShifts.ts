@@ -88,7 +88,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
       // case the embed is null and the browser filters that shift out via `hasJob`.
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, min_age, visible )')
+        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, min_age, visible, description, requirements )')
 
       if (error) throw error
 
@@ -152,6 +152,8 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
             password: null as string | null,
             minAge: job?.min_age ?? null,
             jobVisible: job?.visible ?? false,
+            jobDescription: job?.description ?? null,
+            jobRequirements: job?.requirements ?? null,
             hasJob: !!job,
             recurrenceGroup: shift.recurrence_group ?? null,
           }
