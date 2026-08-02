@@ -1,30 +1,50 @@
 import { useEffect, useState } from 'react'
 import { useSignups } from '../../hooks/useSignups'
+import { supabase } from '../../lib/supabaseClient'
 import type { RosterEntry } from '../../hooks/useSignups'
 import type { Signup, SignupStatus } from '../../types/signup'
 import type { Shift } from '../../types/shift'
 
 // Roster panel for a single shift: who's signed up, add walk-ins, move / remove,
 // mark no-show / attended, edit notes.  `otherShifts` lets an admin move a person.
-export default function ShiftRoster({ shift, otherShifts }: { shift: Shift; otherShifts: Shift[] }) {
+interface ShiftRosterProps {
+  shift: Shift
+  otherShifts: Shift[]
+  /** Optional callback to clean up volunteer's active_shifts when a signup is removed */
+  onRemoveSignup?: (shiftId: string, userId: string | null) => Promise<void> | void
+}
+
+export default function ShiftRoster({ shift, otherShifts, onRemoveSignup }: ShiftRosterProps) {
   const { fetchRoster, addSignup, setStatus, moveSignup, removeSignup, updateSignup } = useSignups()
   const [roster, setRoster] = useState<RosterEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [walkInName, setWalkInName] = useState('')
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({})
+  const [error, setError] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
-    setRoster(await fetchRoster(shift.id))
-    setLoading(false)
+    setError(null)
+    try {
+      setRoster(await fetchRoster(shift.id))
+    } catch (e) {
+      setError('Failed to load roster')
+    } finally {
+      setLoading(false)
+    }
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [shift.id])
 
   const addWalkIn = async () => {
     if (!walkInName.trim()) return
-    await addSignup({ shift_id: shift.id, manual_name: walkInName.trim() })
-    setWalkInName('')
-    await load()
+    try {
+      setError(null)
+      await addSignup({ shift_id: shift.id, manual_name: walkInName.trim() })
+      setWalkInName('')
+      await load()
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to add walk-in')
+    }
   }
 
   const statusBadge = (s: SignupStatus) => {
@@ -38,11 +58,36 @@ export default function ShiftRoster({ shift, otherShifts }: { shift: Shift; othe
     return <span style={{ background: c.bg, color: c.fg, padding: '2px 8px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600 }}>{c.label}</span>
   }
 
+  const handleRemove = async (signupId: string) => {
+    if (!confirm('Remove this person from the shift?')) return
+    try {
+      setError(null)
+      // Fetch signup to get shift_id and user_id for cleanup
+      const { data: signup, error: fetchErr } = await supabase
+        .from('signups')
+        .select('shift_id, user_id')
+        .eq('id', signupId)
+        .single()
+      if (fetchErr) throw fetchErr
+      if (!signup) throw new Error('Signup not found')
+      // Delete the signup
+      await removeSignup(signupId)
+      await load()
+      // Notify parent to clean up active_shifts if callback provided
+      if (onRemoveSignup) {
+        await onRemoveSignup(signup.shift_id, signup.user_id ?? null)
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Remove failed')
+    }
+  }
+
   return (
     <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 8, padding: '1rem', marginTop: '0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <strong>Roster — {roster.filter(r => r.status !== 'cancelled').length} signed up · {shift.spotsLeft} spots left</strong>
         <button onClick={load} className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}>Refresh</button>
+        {error && <div style={{ color: '#d32f2f', marginLeft: '0.5rem', fontSize: '0.8rem' }}>{error}</div>}
       </div>
 
       {/* Add walk-in */}
@@ -83,7 +128,7 @@ export default function ShiftRoster({ shift, otherShifts }: { shift: Shift; othe
                     {otherShifts.map(s => <option key={s.id} value={s.id}>{s.dateLabel} · {s.timeLabel}</option>)}
                   </select>
                 )}
-                <button onClick={async () => { if (confirm('Remove this person from the shift?')) { await removeSignup(r.id); load() } }} className="btn-danger" style={miniBtn}>Remove</button>
+                <button onClick={() => handleRemove(r.id)} className="btn-danger" style={miniBtn}>Remove</button>
               </div>
 
               {/* Notes */}

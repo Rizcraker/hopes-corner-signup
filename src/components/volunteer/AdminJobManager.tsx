@@ -9,13 +9,14 @@ interface Props {
   shifts: Shift[]
   loading: boolean
   fetchShifts: () => Promise<void>
+  removeActiveShift: (shiftDescription: string) => Promise<void>
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const blankJobForm = { name: '', description: '', requirements: '', location: '', min_age: 16, visible: true, self_report: false, password: '' }
 
-export default function AdminJobManager({ shifts, loading, fetchShifts }: Props) {
+export default function AdminJobManager({ shifts, loading, fetchShifts, removeActiveShift }: Props) {
   const { jobs, fetchJobs, createJob, updateJob, deleteJob } = useJobs()
   const [jobForm, setJobForm] = useState({ ...blankJobForm })
   const [editingJob, setEditingJob] = useState<Job | null>(null)
@@ -137,7 +138,7 @@ export default function AdminJobManager({ shifts, loading, fetchShifts }: Props)
             </div>
 
             {open && (
-              <JobShifts job={job} jobShifts={jobShifts} loading={loading} fetchShifts={fetchShifts} onFlash={flash} onFail={fail} />
+              <JobShifts job={job} jobShifts={jobShifts} loading={loading} fetchShifts={fetchShifts} onFlash={flash} onFail={fail} removeActiveShift={removeActiveShift} />
             )}
           </div>
         )
@@ -147,9 +148,10 @@ export default function AdminJobManager({ shifts, loading, fetchShifts }: Props)
 }
 
 // ---- Shifts under one job: create (single or recurring), copy-year, list, roster ----
-function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
+function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, removeActiveShift }: {
   job: Job; jobShifts: Shift[]; loading: boolean; fetchShifts: () => Promise<void>
-  onFlash: (m: string) => void; onFail: (m: string) => void
+  onFlash: (m: string) => void; onFail: (m: string) => void;
+  removeActiveShift: (shiftDescription: string) => Promise<void>
 }) {
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('09:00')
@@ -225,8 +227,47 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
 
   const deleteShift = async (id: string) => {
     if (!confirm('Delete this shift and its signups?')) return
-    try { await supabase.from('shifts').delete().eq('id', id); await fetchShifts(); onFlash('Shift deleted') }
-    catch (e: any) { onFail(e.message ?? 'Delete failed') }
+    try {
+      // 1. Get signups for this shift to know which users need the shift removed from active_shifts
+      const { data: signups, error: signupError } = await supabase
+        .from('signups')
+        .select('user_id')
+        .eq('shift_id', id)
+      if (signupError) throw signupError
+
+      // Collect unique user ids (excluding nulls for walk-ins)
+      const userIds = [...new Set(signups.map(s => s.user_id).filter((id): id is string => id !== null))]
+
+      // 2. For each user, remove the shift from their active_shifts array
+      for (const userId of userIds) {
+        const { data: userInfo, error: fetchError } = await supabase
+          .from('user_info')
+          .select('active_shifts')
+          .eq('user_id', userId)
+          .single()
+        if (fetchError) throw fetchError
+
+        const current = userInfo?.active_shifts ?? []
+        const updated = (Array.isArray(current) ? current : []).filter((shiftId: string) => shiftId !== id)
+
+        const { error: updateError } = await supabase
+          .from('user_info')
+          .update({ active_shifts: updated })
+          .eq('user_id', userId)
+        if (updateError) throw updateError
+      }
+
+      // 3. Delete signups for this shift
+      const { error: deleteSignupsError } = await supabase.from('signups').delete().eq('shift_id', id)
+      if (deleteSignupsError) throw deleteSignupsError
+
+      // 4. Finally delete the shift (this will also cascade-delete signups if FK set)
+      await supabase.from('shifts').delete().eq('id', id)
+      await fetchShifts()
+      onFlash('Shift deleted')
+    } catch (e: any) {
+      onFail(e.message ?? 'Delete failed')
+    }
   }
 
   return (
@@ -276,7 +317,17 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail }: {
                   <button onClick={() => deleteShift(s.id)} className="btn-danger" style={miniBtn}>Delete</button>
                 </div>
               </div>
-              {openRoster === s.id && <ShiftRoster shift={s} otherShifts={jobShifts.filter(x => x.id !== s.id)} />}
+              {openRoster === s.id && (
+  <ShiftRoster
+    shift={s}
+    otherShifts={jobShifts.filter(x => x.id !== s.id)}
+    onRemoveSignup={async (shiftId, userId) => {
+      if (!userId) return
+      const description = `${s.role} - ${s.time}`
+      await removeActiveShift(description)
+    }}
+  />
+)}
             </div>
           ))}
         </div>

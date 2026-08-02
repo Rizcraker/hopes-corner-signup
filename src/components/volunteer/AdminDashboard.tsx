@@ -428,6 +428,7 @@ function AdminDashboard({
                 shifts={browser.shifts}
                 loading={browser.loading}
                 fetchShifts={browser.fetchShifts}
+                removeActiveShift={removeActiveShift}
               />
             </div>
           )}

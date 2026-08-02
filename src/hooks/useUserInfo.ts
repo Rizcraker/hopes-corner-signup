@@ -150,6 +150,12 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
 
       // Update the shift's spots left (decrement by 1)
       await updateShiftSpotsLeft(shift.id, -1)
+      // Record signup
+      await supabase.from('signups').insert({
+        shift_id: shift.id,
+        user_id: userSession.user.id,
+        status: 'signed_up'
+      })
     } catch (error) {
       console.error('Error updating active shifts:', error)
       setErrorMessage('Failed to update your shift list. Please try again.')
@@ -179,6 +185,8 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
       if (shift) {
         // Update the shift's spots left (increment by 1)
         await updateShiftSpotsLeft(shift.id, 1)
+        // Remove signup record
+        await supabase.from('signups').delete().eq('shift_id', shift.id).eq('user_id', userSession.user.id)
       }
     } catch (error) {
       console.error('Error removing active shift:', error)
