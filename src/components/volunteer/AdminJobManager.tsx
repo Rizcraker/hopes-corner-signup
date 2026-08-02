@@ -66,8 +66,31 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
 
   const removeJob = async (j: Job) => {
     if (!confirm(`Delete job "${j.name}" and ALL its shifts + signups? This cannot be undone.`)) return
-    try { await deleteJob(j.id); await fetchShifts(); flash('Job deleted') }
-    catch (e: any) { fail(e.message ?? 'Delete failed') }
+    try {
+      // 1. Get all shifts for this job
+      const { data: shifts, error: shiftError } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('job_id', j.id)
+      if (shiftError) throw shiftError
+
+      // 2. For each shift, delete it (which cleans up signups and active_shifts)
+      for (const shift of shifts ?? []) {
+        await deleteShift(shift.id)
+      }
+
+      // 3. Finally delete the job (should have no remaining shifts)
+      const { error: jobError } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', j.id)
+      if (jobError) throw jobError
+
+      await fetchShifts()
+      flash('Job deleted')
+    } catch (e: any) {
+      fail(e.message ?? 'Delete failed')
+    }
   }
 
   return (
@@ -228,41 +251,74 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
   const deleteShift = async (id: string) => {
     if (!confirm('Delete this shift and its signups?')) return
     try {
-      // 1. Get signups for this shift to know which users need the shift removed from active_shifts
+      // Fetch shift details to build description for active_shifts cleanup
+      const { data: shiftData, error: shiftError } = await supabase
+        .from('shifts')
+        .select(`
+          id,
+          jobs (name),
+          shift_start,
+          shift_end
+        `)
+        .eq('id', id)
+        .single()
+      if (shiftError) throw shiftError
+
+      // Build description as stored in active_shifts: "${role} - ${time}"
+      // time format: "Weekday, Mon D · h:mm AM/PM - h:mm AM/PM" (same as useShifts)
+      const start = new Date(shiftData.shift_start)
+      const end = new Date(shiftData.shift_end)
+      const PT_TZ = 'America/Los_Angeles'
+      const formattedDate = start.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: PT_TZ
+      } as const)
+      const startTime = start.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: PT_TZ
+      })
+      const endTime = end.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: PT_TZ
+      })
+      const timeLabel = `${formattedDate} · ${startTime} - ${endTime}`
+      const description = `${shiftData.jobs ? shiftData.jobs.name : 'General'} - ${timeLabel}`
+
+      // Get signups for this shift
       const { data: signups, error: signupError } = await supabase
         .from('signups')
         .select('user_id')
         .eq('shift_id', id)
       if (signupError) throw signupError
 
-      // Collect unique user ids (excluding nulls for walk-ins)
+      // Unique user ids (exclude nulls for walk-ins)
       const userIds = [...new Set(signups.map(s => s.user_id).filter((id): id is string => id !== null))]
 
-      // 2. For each user, remove the shift from their active_shifts array
+      // For each user, remove shift from active_shifts (this also increments spots_left and deletes the signup)
       for (const userId of userIds) {
-        const { data: userInfo, error: fetchError } = await supabase
-          .from('user_info')
-          .select('active_shifts')
-          .eq('user_id', userId)
-          .single()
-        if (fetchError) throw fetchError
-
-        const current = userInfo?.active_shifts ?? []
-        const updated = (Array.isArray(current) ? current : []).filter((shiftId: string) => shiftId !== id)
-
-        const { error: updateError } = await supabase
-          .from('user_info')
-          .update({ active_shifts: updated })
-          .eq('user_id', userId)
-        if (updateError) throw updateError
+        await removeActiveShift(description)
       }
 
-      // 3. Delete signups for this shift
-      const { error: deleteSignupsError } = await supabase.from('signups').delete().eq('shift_id', id)
-      if (deleteSignupsError) throw deleteSignupsError
+      // Delete any remaining signups (e.g., walk-ins) for this shift
+      const { error: deleteRemainingSignupsError } = await supabase
+        .from('signups')
+        .delete()
+        .eq('shift_id', id)
+      if (deleteRemainingSignupsError) throw deleteRemainingSignupsError
 
-      // 4. Finally delete the shift (this will also cascade-delete signups if FK set)
-      await supabase.from('shifts').delete().eq('id', id)
+      // Finally delete the shift (signups should already be cleared)
+      const { error: deleteShiftError } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('id', id)
+      if (deleteShiftError) throw deleteShiftError
+
       await fetchShifts()
       onFlash('Shift deleted')
     } catch (e: any) {
