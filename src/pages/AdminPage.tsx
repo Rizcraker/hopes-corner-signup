@@ -63,6 +63,7 @@ function AdminPage({
         // Admin doesn't need this, it's for regular volunteers
       }}
       removeActiveShift={userInfoApi.removeActiveShift}
+      updateActiveShifts={userInfoApi.updateActiveShifts}
       refreshData={refreshData}
       shifts={shiftsApi.shifts}
       loading={shiftsApi.loading}

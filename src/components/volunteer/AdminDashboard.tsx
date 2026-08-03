@@ -32,6 +32,7 @@ interface AdminDashboardProps {
   // Admin-specific functions
   removeActiveShift: (shiftDescription: string) => Promise<void>
   addHoursVolunteered: (userId: string, hours: number) => Promise<void>
+  updateActiveShifts: (shift: Shift) => Promise<void>
   refreshData: () => void
   fetchShifts: () => Promise<void>
   refreshAdminStats?: () => void
@@ -43,6 +44,7 @@ function AdminDashboard({
   onSignUp,
   removeActiveShift,
   addHoursVolunteered,
+  updateActiveShifts,
   refreshData,
   ...browser
 }: AdminDashboardProps) {
@@ -429,6 +431,7 @@ function AdminDashboard({
                 loading={browser.loading}
                 fetchShifts={browser.fetchShifts}
                 removeActiveShift={removeActiveShift}
+                updateActiveShifts={updateActiveShifts}
               />
             </div>
           )}

@@ -10,13 +10,14 @@ interface Props {
   loading: boolean
   fetchShifts: () => Promise<void>
   removeActiveShift: (shiftDescription: string) => Promise<void>
+  updateActiveShifts: (shift: Shift) => Promise<void>
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const blankJobForm = { name: '', description: '', requirements: '', location: '', min_age: 16, visible: true, self_report: false, password: '' }
 
-export default function AdminJobManager({ shifts, loading, fetchShifts, removeActiveShift }: Props) {
+export default function AdminJobManager({ shifts, loading, fetchShifts, removeActiveShift, updateActiveShifts }: Props) {
   const { jobs, fetchJobs, createJob, updateJob, deleteJob } = useJobs()
   const [jobForm, setJobForm] = useState({ ...blankJobForm })
   const [editingJob, setEditingJob] = useState<Job | null>(null)
@@ -147,7 +148,7 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
             </div>
 
             {open && (
-              <JobShifts job={job} jobShifts={jobShifts} loading={loading} fetchShifts={fetchShifts} onFlash={flash} onFail={fail} removeActiveShift={removeActiveShift} />
+              <JobShifts job={job} jobShifts={jobShifts} loading={loading} fetchShifts={fetchShifts} onFlash={flash} onFail={fail} removeActiveShift={removeActiveShift} updateActiveShifts={updateActiveShifts} />
             )}
           </div>
         )
@@ -157,10 +158,11 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
 }
 
 // ---- Shifts under one job: create (single or recurring), copy-year, list, roster ----
-function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, removeActiveShift }: {
+function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, removeActiveShift, updateActiveShifts }: {
   job: Job; jobShifts: Shift[]; loading: boolean; fetchShifts: () => Promise<void>
   onFlash: (m: string) => void; onFail: (m: string) => void;
-  removeActiveShift: (shiftDescription: string) => Promise<void>
+  removeActiveShift: (shiftDescription: string) => Promise<void>;
+  updateActiveShifts: (shift: Shift) => Promise<void>;
 }) {
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('09:00')
@@ -360,16 +362,17 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
                 </div>
               </div>
               {openRoster === s.id && (
-  <ShiftRoster
-    shift={s}
-    otherShifts={jobShifts.filter(x => x.id !== s.id)}
-    onRemoveSignup={async (shiftId, userId) => {
-      if (!userId) return
-      const description = `${s.role} - ${s.time}`
-      await removeActiveShift(description)
-    }}
-  />
-)}
+      <ShiftRoster
+        shift={s}
+        otherShifts={jobShifts.filter(x => x.id !== s.id)}
+        onRemoveSignup={async (shiftId, userId) => {
+          if (!userId) return
+          const description = `${s.role} - ${s.time}`
+          await removeActiveShift(description)
+        }}
+        onAddSignup={updateActiveShifts}
+      />
+    )}
             </div>
           ))}
         </div>

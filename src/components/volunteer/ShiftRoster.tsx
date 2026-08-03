@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient'
 import type { RosterEntry } from '../../hooks/useSignups'
 import type { Signup, SignupStatus } from '../../types/signup'
 import type { Shift } from '../../types/shift'
+import type { UserInfo } from '../../types/userInfo'
 
 // Roster panel for a single shift: who's signed up, add walk-ins, move / remove,
 // mark no-show / attended, edit notes.  `otherShifts` lets an admin move a person.
@@ -12,13 +13,18 @@ interface ShiftRosterProps {
   otherShifts: Shift[]
   /** Optional callback to clean up volunteer's active_shifts when a signup is removed */
   onRemoveSignup?: (shiftId: string, userId: string | null) => Promise<void> | void
+  /** Optional callback to add a volunteer to the shift (updates active_shifts and creates signup) */
+  onAddSignup?: (shift: Shift, userId: string) => Promise<void> | void
 }
 
-export default function ShiftRoster({ shift, otherShifts, onRemoveSignup }: ShiftRosterProps) {
+export default function ShiftRoster({ shift, otherShifts, onRemoveSignup, onAddSignup }: ShiftRosterProps) {
   const { fetchRoster, addSignup, setStatus, moveSignup, removeSignup, updateSignup } = useSignups()
   const [roster, setRoster] = useState<RosterEntry[]>([])
   const [loading, setLoading] = useState(false)
-  const [walkInName, setWalkInName] = useState('')
+  const [volunteers, setVolunteers] = useState<UserInfo[]>([])
+  const [volunteersLoading, setVolunteersLoading] = useState(false)
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState<string | null>(null)
+  const [volunteerSearch, setVolunteerSearch] = useState('')
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
 
@@ -33,17 +39,46 @@ export default function ShiftRoster({ shift, otherShifts, onRemoveSignup }: Shif
       setLoading(false)
     }
   }
-  useEffect(() => { load() /* eslint-disable-next-line */ }, [shift.id])
 
-  const addWalkIn = async () => {
-    if (!walkInName.trim()) return
+  const loadVolunteers = async () => {
+    setVolunteersLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('user_info')
+        .select('user_id, first_name, last_name, email')
+        .order('last_name')
+        .order('first_name')
+      if (error) throw error
+      setVolunteers(data || [])
+    } catch (e) {
+      setError('Failed to load volunteers')
+    } finally {
+      setVolunteersLoading(false)
+    }
+  }
+
+  useEffect(() => { load() /* eslint-disable-next-line */ }, [shift.id])
+  useEffect(() => { loadVolunteers() /* eslint-disable-next-line */ }, [])
+
+  const filteredVolunteers = volunteers.filter(v => {
+    if (!volunteerSearch) return true
+    const search = volunteerSearch.toLowerCase()
+    return (
+      (v.first_name ?? '').toLowerCase().includes(search) ||
+      (v.last_name ?? '').toLowerCase().includes(search) ||
+      (v.email ?? '').toLowerCase().includes(search)
+    )
+  })
+
+  const addVolunteer = async () => {
+    if (!selectedVolunteerId) return
     try {
       setError(null)
-      await addSignup({ shift_id: shift.id, manual_name: walkInName.trim() })
-      setWalkInName('')
+      await onAddSignup?.(shift, selectedVolunteerId)
+      setSelectedVolunteerId(null)
       await load()
     } catch (e: any) {
-      setError(e.message ?? 'Failed to add walk-in')
+      setError(e.message ?? 'Failed to add volunteer')
     }
   }
 
@@ -90,15 +125,38 @@ export default function ShiftRoster({ shift, otherShifts, onRemoveSignup }: Shif
         {error && <div style={{ color: '#d32f2f', marginLeft: '0.5rem', fontSize: '0.8rem' }}>{error}</div>}
       </div>
 
-      {/* Add walk-in */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+      {/* Add volunteer */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
         <input
-          value={walkInName}
-          onChange={e => setWalkInName(e.target.value)}
-          placeholder="Add walk-in by name…"
-          style={{ flex: 1, padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '0.85rem' }}
+          placeholder="Search volunteers by name or email..."
+          value={volunteerSearch}
+          onChange={e => setVolunteerSearch(e.target.value)}
+          style={{ padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '0.85rem' }}
         />
-        <button onClick={addWalkIn} className="btn-primary" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>Add</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <select
+            value={selectedVolunteerId}
+            onChange={e => setSelectedVolunteerId(e.target.value)}
+            placeholder="Select volunteer…"
+            style={{ flex: 1, padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '0.85rem' }}
+          >
+            <option value="">Select volunteer…</option>
+            {volunteersLoading ? (
+              <option disabled>Loading volunteers…</option>
+            ) : filteredVolunteers.length === 0 ? (
+              <option disabled>{volunteerSearch ? 'No volunteers match your search' : 'No volunteers found'}</option>
+            ) : (
+              filteredVolunteers.map(v => (
+                <option key={v.user_id} value={v.user_id}>
+                  {v.first_name} {v.last_name} {v.email && `(${v.email})`}
+                </option>
+              ))
+            )}
+          </select>
+          <button onClick={addVolunteer} className="btn-primary" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
+            Add Volunteer
+          </button>
+        </div>
       </div>
 
       {loading ? <p style={{ color: '#666' }}>Loading roster…</p> : roster.length === 0 ? (
@@ -124,7 +182,7 @@ export default function ShiftRoster({ shift, otherShifts, onRemoveSignup }: Shif
                     onChange={async e => { if (e.target.value) { await moveSignup(r.id, e.target.value); load() } }}
                     style={{ ...miniBtn, cursor: 'pointer' }}
                   >
-                    <option value="" disabled>Move to…</option>
+                    <option value="">Move to…</option>
                     {otherShifts.map(s => <option key={s.id} value={s.id}>{s.dateLabel} · {s.timeLabel}</option>)}
                   </select>
                 )}

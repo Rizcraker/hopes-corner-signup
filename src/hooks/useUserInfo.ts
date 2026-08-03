@@ -107,19 +107,33 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
   }
 
   const updateActiveShifts = async (shift: Shift) => {
-    if (!userSession?.user || !userInfo) return
+    if (!userSession?.user) return
     try {
       setErrorMessage(null)
 
+      // Fetch latest user info from DB
+      const { data: freshUserInfo, error: fetchError } = await supabase
+        .from('user_info')
+        .select('active_shifts, age_range, parent_email')
+        .eq('user_id', userSession.user.id)
+        .single()
+      if (fetchError) throw fetchError
+
+      const parsedActiveShifts = Array.isArray(freshUserInfo.active_shifts)
+        ? freshUserInfo.active_shifts
+        : typeof freshUserInfo.active_shifts === 'string'
+          ? JSON.parse(freshUserInfo.active_shifts)
+          : []
+
       // 14–15 volunteers can only sign up once a parent/guardian volunteer
       // account is linked AND that account actually exists (verified).
-      if (userInfo.age_range === '14_15') {
-        if (!userInfo.parent_email) {
+      if (freshUserInfo.age_range === '14_15') {
+        if (!freshUserInfo.parent_email) {
           setErrorMessage('14–15 volunteers must link a parent/guardian volunteer account before signing up. Add it under "Edit my info".')
           return
         }
         const { data: parentExists, error: pErr } = await supabase
-          .rpc('parent_account_exists', { p_email: userInfo.parent_email })
+          .rpc('parent_account_exists', { p_email: freshUserInfo.parent_email })
         if (pErr) throw pErr
         if (!parentExists) {
           setErrorMessage('Your linked parent/guardian doesn’t have a volunteer account yet. Ask them to create one with that email, then try again.')
@@ -129,20 +143,20 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
 
       const shiftDescription = `${shift.role} - ${shift.time}`
 
-      if (userInfo.active_shifts.includes(shiftDescription)) {
+      if (parsedActiveShifts.includes(shiftDescription)) {
         setErrorMessage('You are already signed up for this shift.')
         return
       }
 
-      const newActiveShifts = [...userInfo.active_shifts, shiftDescription]
+      const newActiveShifts = [...parsedActiveShifts, shiftDescription]
 
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('user_info')
         .update({ active_shifts: newActiveShifts })
         .eq('user_id', userSession.user.id)
+      if (updateError) throw updateError
 
-      if (error) throw error
-
+      // Update local state optimistically
       setUserInfo(prev => {
         if (!prev) return null
         return { ...prev, active_shifts: newActiveShifts }
@@ -163,18 +177,38 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
   }
 
   const removeActiveShift = async (shiftDescription: string) => {
-    if (!userSession?.user || !userInfo) return
+    if (!userSession?.user) return
     try {
       setErrorMessage(null)
-      const newActiveShifts = userInfo.active_shifts.filter(s => s !== shiftDescription)
 
-      const { error } = await supabase
+      // Fetch latest user info from DB
+      const { data: freshUserInfo, error: fetchError } = await supabase
+        .from('user_info')
+        .select('active_shifts')
+        .eq('user_id', userSession.user.id)
+        .single()
+      if (fetchError) throw fetchError
+
+      const parsedActiveShifts = Array.isArray(freshUserInfo.active_shifts)
+        ? freshUserInfo.active_shifts
+        : typeof freshUserInfo.active_shifts === 'string'
+          ? JSON.parse(freshUserInfo.active_shifts)
+          : []
+
+      if (!parsedActiveShifts.includes(shiftDescription)) {
+        setErrorMessage('You are not signed up for this shift.')
+        return
+      }
+
+      const newActiveShifts = parsedActiveShifts.filter(s => s !== shiftDescription)
+
+      const { error: updateError } = await supabase
         .from('user_info')
         .update({ active_shifts: newActiveShifts })
         .eq('user_id', userSession.user.id)
+      if (updateError) throw updateError
 
-      if (error) throw error
-
+      // Update local state
       setUserInfo(prev => {
         if (!prev) return null
         return { ...prev, active_shifts: newActiveShifts }
