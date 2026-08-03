@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useHours } from '../../hooks/useHours'
 import type { PendingRequest } from '../../hooks/useHours'
 import { useGroups } from '../../hooks/useGroups'
+import { useBlacklist } from '../../hooks/useBlacklist'
 import { formatDateOnly, ageFromBirthday } from '../../utils/dateUtils'
 import { ageRangeShort, ageRangeLabel } from '../../utils/ageRange'
 
@@ -60,12 +61,27 @@ function AdminDashboard({
   const [hoursNote, setHoursNote] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
+  // Ban form state
+  const [banForm, setBanForm] = useState({
+    volunteerId: '',
+    reason: '',
+    until: '' // ISO date string or empty for permanent
+  })
 
   const hoursApi = useHours()
   const groupsApi = useGroups()
   const [newGroup, setNewGroup] = useState('')
 
   useEffect(() => { groupsApi.fetchGroups() }, [groupsApi.fetchGroups])
+
+  // Blacklist hook
+  const { loading: blacklistLoading, error: blacklistError, entries: blacklist, fetchBlacklist, addBan, removeBan } = useBlacklist()
+  useEffect(() => {
+    fetchBlacklist()
+  }, [fetchBlacklist])
+
+  // Sync hook state to local state (optional, we can use hook directly)
+  // We'll just use the hook's return values directly in render.
 
   const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -288,12 +304,12 @@ function AdminDashboard({
         <button className={`admin-tab ${activeTab === 'shifts' ? 'active' : ''}`} onClick={() => setActiveTab('shifts')}>
           Jobs & Shifts
         </button>
-        <button className={`admin-tab ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
-          Manage Admins
-        </button>
         <button className={`admin-tab ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => { setActiveTab('requests'); loadPending() }}>
           Hour Requests
           {pendingRequests.length > 0 && <span className="req-badge">{pendingRequests.length}</span>}
+        </button>
+        <button className={`admin-tab ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
+          Admin Actions
         </button>
       </nav>
 
@@ -488,6 +504,139 @@ function AdminDashboard({
                   ))}
               </div>
 
+              <h4 style={{ marginTop: '1.75rem' }}>Ban Management</h4>
+              <p className="note-text" style={{ marginTop: 0 }}>
+                Ban volunteers from signing up for shifts. Enter reason and optional expiration date.
+              </p>
+              <div className="ban-form-section">
+                <div className="form-group">
+                  <label>Volunteer</label>
+                  <select
+                    value={banForm.volunteerId}
+                    onChange={(e) => setBanForm({ ...banForm, volunteerId: e.target.value })}
+                    style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4 }}
+                  >
+                    <option value="">Select volunteer…</option>
+                    {volunteers
+                      .map(v => (
+                        <option key={v.user_id} value={v.user_id}>
+                          {`${v.first_name ?? ''} ${v.last_name ?? ''}`.trim()} ({v.email})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label>Reason</label>
+                  <input
+                    type="text"
+                    value={banForm.reason}
+                    onChange={(e) => setBanForm({ ...banForm, reason: e.target.value })}
+                    placeholder="Reason for ban"
+                    style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4 }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label>Expires (optional)</label>
+                  <input
+                    type="date"
+                    value={banForm.until}
+                    onChange={(e) => setBanForm({ ...banForm, until: e.target.value })}
+                    style={{ width: '100%', padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4 }}
+                  />
+                  <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>
+                    Leave empty for a permanent ban.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!banForm.volunteerId) {
+                      alert('Please select a volunteer');
+                      return
+                    }
+                    const volunteer = volunteers.find(v => v.user_id === banForm.volunteerId)
+                    if (!volunteer) {
+                      alert('Volunteer not found')
+                      return
+                    }
+                    try {
+                      await addBan({
+                        user_id: volunteer.user_id,
+                        email: volunteer.email,
+                        name: `${volunteer.first_name ?? ''} ${volunteer.last_name ?? ''}`.trim(),
+                        reason: banForm.reason || null,
+                        until: banForm.until || null
+                      })
+                      // reset form
+                      setBanForm({ volunteerId: '', reason: '', until: '' })
+                      alert('Ban added successfully')
+                    } catch (err) {
+                      console.error('Error adding ban:', err)
+                      alert('Failed to add ban: ' + (err.message ?? 'Unknown error'))
+                    }
+                  }}
+                  className="btn-primary btn-sm"
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  Add Ban
+                </button>
+              </div>
+
+              {blacklistLoading && <p className="note-text">Loading ban list…</p>}
+              {blacklistError && <p className="note-text" style={{ color: '#d32f2f' }}>Error loading ban list: {blacklistError}</p>}
+              {!blacklistLoading && !blacklistError && (
+                <div>
+                  <h4 style={{ marginTop: '1.5rem' }}>Current Bans ({blacklist.length})</h4>
+                  {blacklist.length === 0 ? (
+                    <p className="note-text">No active bans.</p>
+                  ) : (
+                    <div className="ban-list">
+                      {blacklist.map((ban) => (
+                        <div key={ban.user_id} className="ban-item" style={{ border: '1px solid #eee', borderRadius: 6, padding: '0.75rem', marginBottom: '0.5rem', background: '#fafafa' }}>
+                          <div>
+                            <strong>{ban.name}</strong> ({ban.email})
+                            {ban.reason && (
+                              <>
+                                <br />
+                                <span style={{ fontSize: '0.85rem', color: '#555' }}>Reason: {ban.reason}</span>
+                              </>
+                            )}
+                          </div>
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                            {ban.until ? (
+                              <>
+                                Expires: {new Date(ban.until).toLocaleDateString()} &nbsp;
+                                {new Date(ban.until) < new Date() ? (
+                                  <span style={{ color: '#d32f2f' }}> (Expired)</span>
+                                ) : (
+                                  <span style={{ color: '#28a745' }}> (Active)</span>
+                                )}
+                              </>
+                            ) : (
+                              <span style={{ color: '#dc3545' }}>Permanent</span>
+                            )}
+                          </div>
+                          <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Unban ${ban.name}?`)) {
+                                  removeBan(ban.user_id).then(() => {
+                                    alert('Ban removed')
+                                  }).catch(err => {
+                                    alert('Failed to remove ban: ' + (err.message ?? 'Unknown error'))
+                                  })
+                                }
+                              }}
+                              className="btn-danger btn-sm"
+                            >
+                              Unban
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <h4 style={{ marginTop: '1.75rem' }}>Organizations</h4>
               <p className="note-text" style={{ marginTop: 0 }}>Groups volunteers can sign up under during registration.</p>
               <form className="org-add-form" onSubmit={handleAddGroup}>

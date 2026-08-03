@@ -119,6 +119,33 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
         .single()
       if (fetchError) throw fetchError
 
+      // Check if the user is currently banned
+      const { data: banData, error: banError } = await supabase
+        .from('blacklist')
+        .select('until')
+        .eq('user_id', userSession.user.id)
+        .single()
+      if (banError && banError.code !== 'PGRST116') {
+        // PGRST116 means no row found, which is fine (not banned)
+        throw banError
+      }
+      let isBanned = false
+      if (banData) {
+        if (banData.until === null) {
+          isBanned = true // permanent ban
+        } else {
+          const untilDate = new Date(banData.until)
+          const now = new Date()
+          if (untilDate >= now) {
+            isBanned = true // active temporary ban
+          }
+        }
+      }
+      if (isBanned) {
+        setErrorMessage('You are currently banned from signing up for shifts.')
+        return
+      }
+
       const parsedActiveShifts = Array.isArray(freshUserInfo.active_shifts)
         ? freshUserInfo.active_shifts
         : typeof freshUserInfo.active_shifts === 'string'
