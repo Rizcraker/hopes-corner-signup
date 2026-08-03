@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Shift } from '../../types/shift'
 import ShiftCard from './ShiftCard'
+import { meetsAgeRequirement } from '../../utils/ageRange'
 
 // Every piece of state here is owned by useShifts (called in App), not by this component:
 // the /volunteer route element unmounts on navigation, so local state would reset each visit.
@@ -23,6 +24,7 @@ interface ShiftBrowserProps {
   shiftsByDate: Shift[]
   shiftsByMonth: Record<string, Shift[]>
   onSignUp: (shift: Shift) => Promise<void>
+  userAgeRange: string | null  // User's age range for eligibility filtering
 }
 
 function ShiftBrowser({
@@ -44,6 +46,7 @@ function ShiftBrowser({
   shiftsByDate,
   shiftsByMonth,
   onSignUp,
+  userAgeRange,  // User's age range for eligibility filtering
 }: ShiftBrowserProps) {
   const [query, setQuery] = useState('')
   const term = query.trim().toLowerCase()
@@ -53,12 +56,25 @@ function ShiftBrowser({
     s.dateLabel.toLowerCase().includes(term) ||
     s.timeLabel.toLowerCase().includes(term)
   // A shift renders only if it belongs to a visible job (hidden/team-lead jobs are
-  // filtered out by RLS, but guard here too), matches the search, and still has open
-  // spots (spots_left <= 0 hides full shifts). `shifts` itself is NOT filtered to drop
+  // filtered out by RLS, but guard here too), matches the search, meets age requirements,
+  // and still has open spots (spots_left <= 0 hides full shifts). `shifts` itself is NOT filtered to drop
   // full shifts: it's owned by useShifts and shared with admins, and removeActiveShift
   // searches it by description to find the shift whose spots to restore on cancel — a
   // just-went-to-0 shift has to stay findable. Keep this filter at the presentation layer.
-  const isAvailable = (s: Shift) => s.hasJob && s.jobVisible && matches(s)
+  const isAvailable = (s: Shift) => {
+    // If no job or job not visible, filter out
+    if (!s.hasJob || !s.jobVisible) return false
+
+    // Check search match first (needed for all cases)
+    const matchesSearch = matches(s)
+    if (!matchesSearch) return false
+
+    // If no age restriction on the job (minAge is null), allow all ages
+    if (s.minAge === null) return true
+
+    // Check if user meets the minimum age requirement
+    return meetsAgeRequirement(userAgeRange, s.minAge)
+  }
   const showShift = (s: Shift) => isAvailable(s) && s.spotsLeft > 0
 
   return (

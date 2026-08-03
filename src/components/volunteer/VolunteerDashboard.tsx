@@ -40,6 +40,8 @@ function VolunteerDashboard({
   handleSignOut,
   ...browser
 }: VolunteerDashboardProps) {
+  // Compute user's age range for eligibility filtering
+  const userAgeRange = userInfo?.age_range ?? null;
   const userId = userInfo?.user_id ?? null
   const hoursApi = useHours()
   const [entries, setEntries] = useState<HourEntry[]>([])
@@ -289,7 +291,10 @@ function VolunteerDashboard({
         </div>
       </div>
 
-      <ShiftBrowser {...browser} />
+      <ShiftBrowser
+        {...browser}
+        userAgeRange={userAgeRange}
+      />
     </div>
   )
 }
