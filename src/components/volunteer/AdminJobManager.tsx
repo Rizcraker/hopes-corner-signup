@@ -64,34 +64,20 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const removeJob = async (j: Job) => {
+  const handleDeleteJob = async (j: Job) => {
     if (!confirm(`Delete job "${j.name}" and ALL its shifts + signups? This cannot be undone.`)) return
     try {
-      // 1. Get all shifts for this job
-      const { data: shifts, error: shiftError } = await supabase
-        .from('shifts')
-        .select('id')
-        .eq('job_id', j.id)
-      if (shiftError) throw shiftError
-
-      // 2. For each shift, delete it (which cleans up signups and active_shifts)
-      for (const shift of shifts ?? []) {
-        await deleteShift(shift.id)
-      }
-
-      // 3. Finally delete the job (should have no remaining shifts)
-      const { error: jobError } = await supabase
-        .from('jobs')
-        .delete()
-        .eq('id', j.id)
-      if (jobError) throw jobError
-
+      await deleteJob(j.id)
       await fetchShifts()
-      flash('Job deleted')
+      setMsg('Job deleted')
+      setErr(null)
     } catch (e: any) {
-      fail(e.message ?? 'Delete failed')
+      setErr(e.message ?? 'Delete failed')
+      setMsg(null)
     }
   }
+
+  // No separate removeJob function; deletion handled via hook's deleteJob
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -155,7 +141,7 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <button onClick={() => updateJob(job.id, { visible: !job.visible })} className="btn-secondary" style={miniBtn}>{job.visible ? 'Hide' : 'Show'}</button>
                 <button onClick={() => startEdit(job)} className="btn-secondary" style={miniBtn}>Edit</button>
-                <button onClick={() => removeJob(job)} className="btn-danger" style={miniBtn}>Delete</button>
+                <button onClick={() => handleDeleteJob(job)} className="btn-danger" style={miniBtn}>Delete</button>
                 <button onClick={() => setExpandedJob(open ? null : job.id)} className="btn-primary" style={miniBtn}>{open ? 'Close' : 'Manage shifts'}</button>
               </div>
             </div>
