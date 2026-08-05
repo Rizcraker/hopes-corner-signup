@@ -215,6 +215,29 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     }
   }
 
+  // Send a Supabase password-recovery email. The link lands on /reset-password,
+  // where the temporary recovery session lets the user set a new password.
+  const handleForgotPassword = async () => {
+    setErrorMessage(null)
+    setInfoMessage(null)
+    if (!email.trim()) {
+      setErrorMessage('Enter your email above first, then click "Forgot password?".')
+      return
+    }
+    setAuthLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      setInfoMessage('Password reset email sent. Check your inbox for the link.')
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Could not send reset email.')
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     setUserSession(null)
@@ -256,6 +279,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     groupOptions,
     resetProfileFields,
     handleAuthSubmit,
+    handleForgotPassword,
     handleSignOut,
     getUserName,
     isAdmin,

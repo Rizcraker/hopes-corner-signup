@@ -89,7 +89,8 @@ export function useJobs() {
 
       // 2. For each shift, mimic user deleting a shift
       for (const shift of shifts ?? []) {
-        const role = shift.jobs?.name ?? 'General'
+        const jobRel = shift.jobs as unknown as ({ name?: string } | { name?: string }[] | null)
+        const role = (Array.isArray(jobRel) ? jobRel[0]?.name : jobRel?.name) ?? 'General'
         const start = shift.shift_start
         const end = shift.shift_end
         const timeLabel = `${formatDate(start)} · ${formatTime(start)} - ${formatTime(end)}`

@@ -227,7 +227,7 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
         return
       }
 
-      const newActiveShifts = parsedActiveShifts.filter(s => s !== shiftDescription)
+      const newActiveShifts = parsedActiveShifts.filter((s: string) => s !== shiftDescription)
 
       const { error: updateError } = await supabase
         .from('user_info')
@@ -248,6 +248,21 @@ export function useUserInfo({ userSession, setErrorMessage, updateShiftSpotsLeft
         await updateShiftSpotsLeft(shift.id, 1)
         // Remove signup record
         await supabase.from('signups').delete().eq('shift_id', shift.id).eq('user_id', userSession.user.id)
+        // Log the cancellation for the admin report + late-cancel follow-up (best-effort;
+        // a failed log must never block the cancel). `late` = within 24h of the shift.
+        try {
+          const hoursBefore = (shift.startDate.getTime() - Date.now()) / 3_600_000
+          await supabase.from('cancellations').insert({
+            user_id: userSession.user.id,
+            shift_id: shift.id,
+            shift_start: shift.startDate.toISOString(),
+            job_name: shift.role,
+            hours_before: Math.round(hoursBefore * 10) / 10,
+            late: hoursBefore < 24,
+          })
+        } catch (logErr) {
+          console.warn('Could not log cancellation:', logErr)
+        }
       }
     } catch (error) {
       console.error('Error removing active shift:', error)

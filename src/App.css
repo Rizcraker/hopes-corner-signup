@@ -2252,3 +2252,28 @@ button { font-family: var(--font-body); }
   .print-only { display: block !important; }
   .print-header { margin-bottom: 16px; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
 }
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--hc-green-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px;
+  width: 100%;
+}
+.link-btn:hover:not(:disabled) { color: var(--hc-green-dark); }
+.link-btn:disabled { opacity: 0.6; cursor: default; }
+
+.shift-date-filter { display: flex; align-items: center; gap: 6px; }
+.shift-date-filter input[type="date"] {
+  padding: 9px 12px;
+  border: 1.5px solid var(--hc-border);
+  border-radius: var(--radius-full);
+  font-size: 0.9rem;
+  color: var(--hc-text-main);
+  background: var(--hc-white);
+}
+.shift-date-filter input[type="date"]:focus { outline: none; border-color: var(--hc-green-bright); box-shadow: 0 0 0 3px rgba(45,143,107,0.15); }

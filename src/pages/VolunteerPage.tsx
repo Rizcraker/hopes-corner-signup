@@ -69,6 +69,7 @@ function VolunteerPage({ auth, userInfoApi, shiftsApi }: VolunteerPageProps) {
           groupOptions={auth.groupOptions}
           resetProfileFields={auth.resetProfileFields}
           handleAuthSubmit={auth.handleAuthSubmit}
+          onForgotPassword={auth.handleForgotPassword}
         />
       ) : (
         <VolunteerDashboard

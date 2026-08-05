@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { AGE_RANGES, parentLinkMode } from '../../utils/ageRange'
 
@@ -6,6 +7,7 @@ import { AGE_RANGES, parentLinkMode } from '../../utils/ageRange'
 interface AuthPanelProps {
   isSignUp: boolean
   setIsSignUp: (v: boolean) => void
+  onForgotPassword: () => void
   email: string
   setEmail: (v: string) => void
   password: string
@@ -99,7 +101,16 @@ function AuthPanel({
   groupOptions,
   resetProfileFields,
   handleAuthSubmit,
+  onForgotPassword,
 }: AuthPanelProps) {
+  // Clear any leftover banner (e.g. a signup-success message) when switching
+  // between the New Volunteer and Returning Volunteer views.
+  useEffect(() => {
+    setErrorMessage(null)
+    setInfoMessage(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignUp])
+
   return (
     <div className="auth-card">
       <div className="auth-toggle-tabs">
@@ -253,6 +264,9 @@ function AuthPanel({
           <>
             <button type="submit" className="btn-primary" disabled={authLoading}>
               {authLoading ? 'Signing In...' : 'Sign In'}
+            </button>
+            <button type="button" className="link-btn" onClick={onForgotPassword} disabled={authLoading} style={{ marginTop: '0.75rem' }}>
+              Forgot password?
             </button>
           </>
         )}

@@ -276,7 +276,9 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
         timeZone: PT_TZ
       })
       const timeLabel = `${formattedDate} · ${startTime} - ${endTime}`
-      const description = `${shiftData.jobs ? shiftData.jobs.name : 'General'} - ${timeLabel}`
+      const jobRel = shiftData.jobs as unknown as ({ name?: string } | { name?: string }[] | null)
+      const jobName = (Array.isArray(jobRel) ? jobRel[0]?.name : jobRel?.name) ?? 'General'
+      const description = `${jobName} - ${timeLabel}`
 
       // Get signups for this shift
       const { data: signups, error: signupError } = await supabase
@@ -289,7 +291,7 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
       const userIds = [...new Set(signups.map(s => s.user_id).filter((id): id is string => id !== null))]
 
       // For each user, remove shift from active_shifts (this also increments spots_left and deletes the signup)
-      for (const userId of userIds) {
+      for (const _userId of userIds) {
         await removeActiveShift(description)
       }
 
@@ -365,7 +367,7 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
       <ShiftRoster
         shift={s}
         otherShifts={jobShifts.filter(x => x.id !== s.id)}
-        onRemoveSignup={async (shiftId, userId) => {
+        onRemoveSignup={async (_shiftId, userId) => {
           if (!userId) return
           const description = `${s.role} - ${s.time}`
           await removeActiveShift(description)

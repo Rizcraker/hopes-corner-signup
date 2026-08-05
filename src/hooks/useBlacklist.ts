@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import type { Database } from '../../types/database'
 
 export type BlacklistEntry = {
   user_id: string

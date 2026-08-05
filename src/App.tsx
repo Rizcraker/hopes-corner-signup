@@ -20,6 +20,7 @@ import CommunityPage from './pages/CommunityPage'
 import NewsPage from './pages/NewsPage'
 import ContactPage from './pages/ContactPage'
 import AdminPage from './pages/AdminPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function App() {
   const { pathname } = useLocation()
@@ -95,6 +96,8 @@ function App() {
     // 2. User is authenticated (has a session)
     // 3. Admin status has been loaded
     // 4. We haven't redirected yet
+    // Never bounce off the password-reset page — the recovery session must stay there.
+    if (pathname === '/reset-password') return
     if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected) {
       setRedirected(true)
       // Redirect based on admin status
@@ -106,7 +109,7 @@ function App() {
         navigate('/volunteer', { replace: true })
       }
     }
-  }, [auth.authLoading, auth.userSession, auth.adminLoading, redirected, navigate])
+  }, [auth.authLoading, auth.userSession, auth.adminLoading, redirected, navigate, pathname])
 
   // Reset redirect flag when user logs out
   useEffect(() => {
@@ -147,6 +150,9 @@ function App() {
 
           {/* ================= CONTACT TAB ================= */}
           <Route path="/contact" element={<ContactPage />} />
+
+          {/* ================= PASSWORD RESET (from recovery email link) ================= */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* ================= ADMIN DASHBOARD (ACCESSIBLE ONLY TO ADMINS) ================= */}
           <Route

@@ -7,6 +7,8 @@ import { useHours } from '../../hooks/useHours'
 import type { PendingRequest } from '../../hooks/useHours'
 import { useGroups } from '../../hooks/useGroups'
 import { useBlacklist } from '../../hooks/useBlacklist'
+import { useCancellations } from '../../hooks/useCancellations'
+import type { CancellationRow } from '../../hooks/useCancellations'
 import { formatDateOnly, ageFromBirthday } from '../../utils/dateUtils'
 import { ageRangeShort, ageRangeLabel } from '../../utils/ageRange'
 
@@ -54,7 +56,7 @@ function AdminDashboard({
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'admins' | 'requests'>('volunteers')
+  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'admins' | 'requests' | 'cancellations'>('volunteers')
   const [confirmAction, setConfirmAction] = useState<{ type: 'make' | 'remove'; userId: string } | null>(null)
   const [selectedVolunteerForHours, setSelectedVolunteerForHours] = useState<string | null>(null)
   const [hoursDelta, setHoursDelta] = useState<string>('1')
@@ -70,7 +72,35 @@ function AdminDashboard({
 
   const hoursApi = useHours()
   const groupsApi = useGroups()
+  const cancellationsApi = useCancellations()
   const [newGroup, setNewGroup] = useState('')
+  const [cancellations, setCancellations] = useState<CancellationRow[]>([])
+  const [lateOnly, setLateOnly] = useState(false)
+
+  const loadCancellations = async () => {
+    setCancellations(await cancellationsApi.fetchCancellations())
+  }
+
+  const markCancelNotified = async (id: string) => {
+    try {
+      await cancellationsApi.markNotified(id, true)
+      setCancellations(prev => prev.map(c => c.id === id ? { ...c, notified: true } : c))
+    } catch (err) { alert('Failed to update: ' + errMsg(err)) }
+  }
+
+  // mailto: link with a pre-filled late-cancellation notice (works with no email backend —
+  // opens the admin's mail client). Auto-send can replace this once Resend is wired.
+  const lateCancelMailto = (c: CancellationRow) => {
+    const when = c.shift_start ? new Date(c.shift_start).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) : 'your shift'
+    const subject = `Hope's Corner — late shift cancellation`
+    const body =
+      `Hi ${c.display_name.split(' ')[0] || 'there'},\n\n` +
+      `We noticed you cancelled your "${c.job_name ?? 'volunteer'}" shift (${when} PT) less than 24 hours before it started.\n\n` +
+      `Last-minute cancellations leave gaps that are hard to fill, so please give us as much notice as you can next time. ` +
+      `If something came up, no worries — we'd still love to have you at a future shift.\n\n` +
+      `Thank you,\nHope's Corner`
+    return `mailto:${c.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
 
   useEffect(() => { groupsApi.fetchGroups() }, [groupsApi.fetchGroups])
 
@@ -310,6 +340,9 @@ function AdminDashboard({
         </button>
         <button className={`admin-tab ${activeTab === 'admins' ? 'active' : ''}`} onClick={() => { setActiveTab('admins'); handleClickVolunteers() }}>
           Admin Actions
+        </button>
+        <button className={`admin-tab ${activeTab === 'cancellations' ? 'active' : ''}`} onClick={() => { setActiveTab('cancellations'); loadCancellations() }}>
+          Cancellations
         </button>
       </nav>
 
@@ -571,7 +604,7 @@ function AdminDashboard({
                       alert('Ban added successfully')
                     } catch (err) {
                       console.error('Error adding ban:', err)
-                      alert('Failed to add ban: ' + (err.message ?? 'Unknown error'))
+                      alert('Failed to add ban: ' + errMsg(err))
                     }
                   }}
                   className="btn-primary btn-sm"
@@ -690,6 +723,61 @@ function AdminDashboard({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Cancellations report */}
+          {activeTab === 'cancellations' && (
+            <div className="admin-panel-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <h4 style={{ margin: 0 }}>Cancelled Volunteers ({cancellations.length})</h4>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="checkbox" checked={lateOnly} onChange={e => setLateOnly(e.target.checked)} />
+                    Late only (&lt;24h)
+                  </label>
+                  <button className="btn-secondary btn-sm" onClick={loadCancellations}>Refresh</button>
+                </div>
+              </div>
+              <p className="note-text" style={{ marginTop: '0.5rem' }}>
+                Volunteer self-cancellations are logged here. Late cancels (&lt;24h before the shift) can be emailed a
+                reminder with one click — this opens your mail app until automatic sending is set up.
+              </p>
+
+              {(() => {
+                const rows = lateOnly ? cancellations.filter(c => c.late) : cancellations
+                if (rows.length === 0) {
+                  return <p className="note-text" style={{ marginTop: '1rem' }}>{lateOnly ? 'No late cancellations. 🎉' : 'No cancellations recorded yet.'}</p>
+                }
+                return (
+                  <div className="request-list">
+                    {rows.map(c => (
+                      <div key={c.id} className="request-card" style={c.late ? { borderLeftColor: 'var(--hc-danger)' } : undefined}>
+                        <div className="request-main">
+                          <div className="request-head">
+                            <span className="request-name">{c.display_name}</span>
+                            {c.late && <span className="request-hours" style={{ background: '#fdecea', color: '#c0392b' }}>Late (&lt;24h)</span>}
+                            {c.notified && <span className="ts-status ts-approved">Notified</span>}
+                          </div>
+                          {c.email && <div className="request-email">{c.email}</div>}
+                          <div className="request-reason" style={{ fontStyle: 'normal' }}>
+                            {c.job_name ?? 'Shift'} · {c.shift_start ? new Date(c.shift_start).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PT' : 'unknown time'}
+                          </div>
+                          <div className="request-date">
+                            Cancelled {new Date(c.cancelled_at).toLocaleString()} · {c.hours_before != null ? `${c.hours_before}h notice` : 'notice unknown'}
+                          </div>
+                        </div>
+                        {c.late && (
+                          <div className="request-actions">
+                            {c.email && <a className="btn-primary btn-sm" href={lateCancelMailto(c)}>✉️ Email</a>}
+                            {!c.notified && <button className="btn-secondary btn-sm" onClick={() => markCancelNotified(c.id)}>Mark notified</button>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           )}
       </div>

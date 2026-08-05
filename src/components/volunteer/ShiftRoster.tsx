@@ -18,10 +18,10 @@ interface ShiftRosterProps {
 }
 
 export default function ShiftRoster({ shift, otherShifts, onRemoveSignup, onAddSignup }: ShiftRosterProps) {
-  const { fetchRoster, addSignup, setStatus, moveSignup, removeSignup, updateSignup } = useSignups()
+  const { fetchRoster, setStatus, moveSignup, removeSignup, updateSignup } = useSignups()
   const [roster, setRoster] = useState<RosterEntry[]>([])
   const [loading, setLoading] = useState(false)
-  const [volunteers, setVolunteers] = useState<UserInfo[]>([])
+  const [volunteers, setVolunteers] = useState<Pick<UserInfo, 'user_id' | 'first_name' | 'last_name' | 'email'>[]>([])
   const [volunteersLoading, setVolunteersLoading] = useState(false)
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<string | null>(null)
   const [volunteerSearch, setVolunteerSearch] = useState('')
@@ -135,9 +135,8 @@ export default function ShiftRoster({ shift, otherShifts, onRemoveSignup, onAddS
         />
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <select
-            value={selectedVolunteerId}
+            value={selectedVolunteerId ?? ''}
             onChange={e => setSelectedVolunteerId(e.target.value)}
-            placeholder="Select volunteer…"
             style={{ flex: 1, padding: '0.4rem', border: '1px solid #ddd', borderRadius: 4, fontSize: '0.85rem' }}
           >
             <option value="">Select volunteer…</option>

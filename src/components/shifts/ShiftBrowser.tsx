@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Shift } from '../../types/shift'
 import ShiftCard from './ShiftCard'
 import { meetsAgeRequirement } from '../../utils/ageRange'
+import { PT_TZ } from '../../hooks/useShifts'
 
 // Every piece of state here is owned by useShifts (called in App), not by this component:
 // the /volunteer route element unmounts on navigation, so local state would reset each visit.
@@ -49,7 +50,11 @@ function ShiftBrowser({
   userAgeRange,  // User's age range for eligibility filtering
 }: ShiftBrowserProps) {
   const [query, setQuery] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
   const term = query.trim().toLowerCase()
+  // A shift's calendar day in Pacific time as YYYY-MM-DD (to compare with the date input).
+  const ptDate = (s: Shift) => s.startDate.toLocaleDateString('en-CA', { timeZone: PT_TZ })
+  const matchesDate = (s: Shift) => !dateFilter || ptDate(s) === dateFilter
   const matches = (s: Shift) =>
     !term ||
     s.role.toLowerCase().includes(term) ||
@@ -68,6 +73,9 @@ function ShiftBrowser({
     // Check search match first (needed for all cases)
     const matchesSearch = matches(s)
     if (!matchesSearch) return false
+
+    // Date filter (if a specific day is chosen)
+    if (!matchesDate(s)) return false
 
     // If no age restriction on the job (minAge is null), allow all ages
     if (s.minAge === null) return true
@@ -102,6 +110,17 @@ function ShiftBrowser({
           />
           {query && (
             <button type="button" className="shift-search-clear" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+        <div className="shift-date-filter">
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            aria-label="Filter shifts by date"
+          />
+          {dateFilter && (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => setDateFilter('')}>Clear date</button>
           )}
         </div>
         <div className="sort-controls">
