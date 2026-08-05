@@ -9,6 +9,7 @@ import { useGroups } from '../../hooks/useGroups'
 import { useBlacklist } from '../../hooks/useBlacklist'
 import { useCancellations } from '../../hooks/useCancellations'
 import type { CancellationRow } from '../../hooks/useCancellations'
+import AdminEmail from './AdminEmail'
 import { formatDateOnly, ageFromBirthday } from '../../utils/dateUtils'
 import { ageRangeShort, ageRangeLabel } from '../../utils/ageRange'
 
@@ -56,7 +57,7 @@ function AdminDashboard({
   const [admins, setAdmins] = useState<Array<{id: string, user_id: string}>>([])
   const [expandedVolunteerId, setExpandedVolunteerId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'admins' | 'requests' | 'cancellations'>('volunteers')
+  const [activeTab, setActiveTab] = useState<'volunteers' | 'shifts' | 'admins' | 'requests' | 'cancellations' | 'email'>('volunteers')
   const [confirmAction, setConfirmAction] = useState<{ type: 'make' | 'remove'; userId: string } | null>(null)
   const [selectedVolunteerForHours, setSelectedVolunteerForHours] = useState<string | null>(null)
   const [hoursDelta, setHoursDelta] = useState<string>('1')
@@ -343,6 +344,9 @@ function AdminDashboard({
         </button>
         <button className={`admin-tab ${activeTab === 'cancellations' ? 'active' : ''}`} onClick={() => { setActiveTab('cancellations'); loadCancellations() }}>
           Cancellations
+        </button>
+        <button className={`admin-tab ${activeTab === 'email' ? 'active' : ''}`} onClick={() => setActiveTab('email')}>
+          Email
         </button>
       </nav>
 
@@ -780,6 +784,9 @@ function AdminDashboard({
               })()}
             </div>
           )}
+
+          {/* Email communication */}
+          {activeTab === 'email' && <AdminEmail />}
       </div>
 
       {/* Admin control panel info box */}
