@@ -115,7 +115,7 @@ export default function AdminEmail() {
     }
   }
 
-  const onDomain = fromEmail.toLowerCase().endsWith('@hopes-corner.org')
+  const onDomain = fromEmail.toLowerCase().endsWith('@hopes-corner.org') || fromEmail.toLowerCase() === 'onboarding@resend.dev'
 
   return (
     <div className="admin-panel-section">
@@ -127,14 +127,25 @@ export default function AdminEmail() {
       {/* From */}
       <div className="email-row">
         <label className="email-label">From</label>
-        <select value={fromEmail} onChange={e => { setFromEmail(e.target.value); const a = admins.find(a => a.email === e.target.value); if (a) setFromName(a.name) }} className="email-input">
+        <select value={fromEmail} onChange={e => {
+          setFromEmail(e.target.value);
+          if (e.target.value === 'onboarding@resend.dev') {
+            setFromName('Resend Testing');
+          } else {
+            const a = admins.find(a => a.email === e.target.value);
+            if (a) setFromName(a.name);
+          }
+        }} className="email-input">
           {admins.length === 0 && <option value="">No admin emails found</option>}
+          {/* Add Resend testing address as an option */}
+          <option value="onboarding@resend.dev">Resend Testing &lt;onboarding@resend.dev&gt;</option>
           {admins.map(a => <option key={a.email} value={a.email}>{a.name} &lt;{a.email}&gt;</option>)}
         </select>
       </div>
       {!onDomain && fromEmail && (
         <p className="field-hint" style={{ color: 'var(--hc-danger)' }}>
-          ⚠ {fromEmail} isn't on hopes-corner.org — Resend will reject it. Pick an org address.
+          ⚠ {fromEmail} isn't on hopes-corner.org — Resend will reject it.
+          {fromEmail.toLowerCase() === 'onboarding@resend.dev' ? '(Resend testing address - should work for testing)' : 'Pick an org address.'}
         </p>
       )}
 
