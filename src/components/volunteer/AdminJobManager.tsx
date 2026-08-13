@@ -24,6 +24,8 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
   const [expandedJob, setExpandedJob] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [jobSearch, setJobSearch] = useState('')
+  const [shiftSearch, setShiftSearch] = useState('')
 
   useEffect(() => { fetchJobs() }, [fetchJobs])
 
@@ -88,6 +90,19 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
       {msg && <div className="alert alert-success" style={{ marginBottom: '1rem', padding: '0.6rem' }}>{msg}</div>}
       {err && <div className="alert alert-error" style={{ marginBottom: '1rem', padding: '0.6rem' }}>{err}</div>}
 
+      {/* Job search */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div className="form-group">
+          <input
+            type="text"
+            placeholder="Search jobs by name..."
+            value={jobSearch}
+            onChange={(e) => setJobSearch(e.target.value)}
+            style={{ ...input, width: '100%' }}
+          />
+        </div>
+      </div>
+
       {/* ---- Job create / edit form ---- */}
       <form onSubmit={submitJob} style={card}>
         <h4 style={{ marginTop: 0 }}>{editingJob ? `Edit job: ${editingJob.name}` : 'Create a job'}</h4>
@@ -123,7 +138,12 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
 
       {/* ---- Jobs list ---- */}
       {jobs.length === 0 && <p style={{ color: '#666' }}>No jobs yet. Create one above.</p>}
-      {jobs.map(job => {
+      {jobs
+        .filter(job =>
+          !jobSearch ||
+          job.name.toLowerCase().includes(jobSearch.toLowerCase())
+        )
+        .map(job => {
         const jobShifts = shiftsByJob[job.id] ?? []
         const open = expandedJob === job.id
         return (
@@ -171,6 +191,7 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [repeatWeeks, setRepeatWeeks] = useState(1)
   const [openRoster, setOpenRoster] = useState<string | null>(null)
+  const [shiftSearch, setShiftSearch] = useState('')
 
   const toggleWeekday = (d: number) =>
     setWeekdays(w => w.includes(d) ? w.filter(x => x !== d) : [...w, d])
@@ -328,6 +349,19 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
           <label style={fieldLabel}>End time<input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={input} /></label>
           <label style={fieldLabel}>Volunteers needed<input type="number" min={1} value={capacity} onChange={e => setCapacity(Number(e.target.value) || 1)} style={input} /></label>
         </div>
+        {/* Shift search */}
+        <div style={{ marginTop: '0.5rem' }}>
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Search shifts by date..."
+              value={shiftSearch}
+              onChange={(e) => setShiftSearch(e.target.value)}
+              style={{ ...input, width: '100%' }}
+            />
+          </div>
+        </div>
+
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontSize: '0.82rem', color: '#555' }}>Repeat on: </span>
           {WEEKDAYS.map((w, i) => (
@@ -351,7 +385,12 @@ function JobShifts({ job, jobShifts, loading, fetchShifts, onFlash, onFail, remo
         <p style={{ color: '#666', fontStyle: 'italic' }}>No shifts yet.</p>
       ) : (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          {jobShifts.map(s => (
+          {jobShifts
+            .filter(s =>
+              !shiftSearch ||
+              s.dateLabel.toLowerCase().includes(shiftSearch.toLowerCase())
+            )
+            .map(s => (
             <div key={s.id} style={{ border: '1px solid #eee', borderRadius: 6, padding: '0.6rem', background: '#fff' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <div>
