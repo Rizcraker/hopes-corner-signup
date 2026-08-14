@@ -25,7 +25,6 @@ export default function AdminJobManager({ shifts, loading, fetchShifts, removeAc
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [jobSearch, setJobSearch] = useState('')
-  const [shiftSearch, setShiftSearch] = useState('')
 
   useEffect(() => { fetchJobs() }, [fetchJobs])
 
