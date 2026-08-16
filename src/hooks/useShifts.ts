@@ -88,7 +88,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
       // case the embed is null and the browser filters that shift out via `hasJob`.
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, jobs ( name, min_age, visible, description, requirements )')
+        .select('id, spots_left, shift_start, shift_end, job_id, recurrence_group, hours_awarded, jobs ( name, min_age, visible, description, requirements )')
 
       if (error) throw error
 
@@ -145,6 +145,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
             time: `${formattedDate} · ${startTime} - ${endTime}`,
             spotsLeft: shift.spots_left ?? 0,
             startDate,
+            endDate,
             dateLabel,
             timeLabel: `${startTime} - ${endTime}`,
             jobId: shift.job_id ?? null,
@@ -156,6 +157,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
             jobRequirements: job?.requirements ?? null,
             hasJob: !!job,
             recurrenceGroup: shift.recurrence_group ?? null,
+            hoursAwarded: shift.hours_awarded ?? false,
           }
         })
         .filter((shift): shift is Shift => shift !== null)
@@ -211,6 +213,29 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
     }
   }
 
+  /** Process any shifts that have ended but not yet awarded hours */
+  const processExpiredShifts = async () => {
+    // Work with a snapshot of current shifts to avoid race conditions
+    const currentShifts = [...shifts]
+    const now = Date.now()
+    const expired = currentShifts.filter(
+      (s) => s.endDate.getTime() <= now && !s.hoursAwarded
+    )
+    if (expired.length === 0) return
+
+    for (const shift of expired) {
+      try {
+        await supabase.rpc('award_hours_for_shift', { shift_id: shift.id })
+        // After awarding, we expect hoursAwarded to be true; we'll refresh shifts to update UI
+      } catch (err) {
+        console.error(`Failed to award hours for shift ${shift.id}:`, err)
+        // Optionally surface error, but continue processing others
+      }
+    }
+    // Refresh shifts to reflect updated hoursAwarded status and any new data
+    await fetchShifts()
+  }
+
   return {
     shifts, setShifts,
     loading,
@@ -226,6 +251,7 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
     jobGroupNames,
     shiftsByDate,
     shiftsByMonth,
-    updateShiftSpotsLeft
+    updateShiftSpotsLeft,
+    processExpiredShifts
   }
 }

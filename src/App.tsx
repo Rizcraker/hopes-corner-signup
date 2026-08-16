@@ -118,6 +118,14 @@ function App() {
     }
   }, [auth.userSession, setRedirected])
 
+  // Periodically process expired shifts to award hours and update UI
+  useEffect(() => {
+    const handler = setInterval(() => {
+      shiftsApi.processExpiredShifts()
+    }, 60 * 1000) // every minute
+    return () => clearInterval(handler)
+  }, [shiftsApi])
+
   return (
     <div className="App">
       {/* Universal Top Navigation Header */}

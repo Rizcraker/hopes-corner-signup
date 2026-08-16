@@ -81,7 +81,15 @@ function ShiftBrowser({
     if (s.minAge === null) return true
 
     // Check if user meets the minimum age requirement
-    return meetsAgeRequirement(userAgeRange, s.minAge)
+    if (!meetsAgeRequirement(userAgeRange, s.minAge)) return false
+
+    // Filter out shifts that have already ended
+    const now = Date.now()
+    if (s.endDate.getTime() <= now) {
+      return false
+    }
+
+    return true
   }
   const showShift = (s: Shift) => isAvailable(s) && s.spotsLeft > 0
 

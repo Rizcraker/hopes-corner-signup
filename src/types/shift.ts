@@ -7,6 +7,7 @@ export interface Shift {
   time: string
   spotsLeft: number
   startDate: Date
+  endDate: Date
   dateLabel: string
   timeLabel: string
   jobId: string | null
@@ -17,4 +18,5 @@ export interface Shift {
   jobRequirements: string | null
   hasJob: boolean
   recurrenceGroup: string | null
+  hoursAwarded: boolean
 }
