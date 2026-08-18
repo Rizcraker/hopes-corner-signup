@@ -1,6 +1,11 @@
 -- ============================================================================
--- Hope's Corner -- Function to award hours for completed shifts
--- Run in Supabase → SQL Editor after 0001–0011. Safe to rerun.
+-- Hope's Corner — award hours for a completed shift
+-- Run in Supabase → SQL Editor after 0001–0011. Safe to re-run.
+--
+-- When a shift is over, every signed-up volunteer is credited its duration, an
+-- approved hour_entries row is written, and the shift is removed from their
+-- active_shifts. SECURITY DEFINER (owned by postgres, the table owner) so it
+-- bypasses RLS — no client permission issues. Idempotent via hours_awarded.
 -- ============================================================================
 
 create or replace function public.award_hours_for_shift(p_shift_id uuid)
@@ -10,113 +15,62 @@ security definer
 set search_path = public
 as $$
 declare
-  v_shift_start timestamptz;
-  v_shift_end   timestamptz;
-  v_job_name    text;
-  v_hours       numeric;
-  v_entry_id    uuid;
-  v_shift_desc  text;
+  v_start   timestamptz;
+  v_end     timestamptz;
+  v_awarded boolean;
+  v_job     text;
+  v_hours   numeric;
+  v_desc    text;
 begin
-  -- Bypass Row Level Security for the duration of this function
-  set local row_security = off;
-
-  -- 1️⃣ Load shift + job name
-  select s.shift_start, s.shift_end, j.name
-    into v_shift_start, v_shift_end, v_job_name
+  select s.shift_start, s.shift_end, s.hours_awarded, coalesce(j.name, 'General')
+    into v_start, v_end, v_awarded, v_job
     from public.shifts s
-    left join public.jobs j on s.job_id = j.id
+    left join public.jobs j on j.id = s.job_id
    where s.id = p_shift_id;
 
-  if not found then
-    raise exception 'Shift not found: %', p_shift_id;
-  end if;
+  if not found then raise exception 'Shift not found: %', p_shift_id; end if;
+  if v_awarded then return; end if;                        -- already paid out — no double count
+  if v_end is null or v_end > now() then return; end if;    -- not finished yet
 
-  -- 2️⃣ Compute hours (duration in hours)
-  v_hours := extract(epoch from (v_shift_end - v_shift_start)) / 3600.0;
+  v_hours := round(greatest(0, extract(epoch from (v_end - v_start)) / 3600.0)::numeric, 2);
 
-  -- 3️⃣ Build the description string that matches what the client stores in active_shifts
-  --    Example: "Barista - Tue, Aug 17 · 9:00 AM - 1:00 PM"
-  v_shift_desc := trim(
-      coalesce(v_job_name,'General') || ' - ' ||
-      to_char(v_shift_start, 'Dy, Mon DD') || ' · ' ||
-      to_char(v_shift_start, 'HH12:MI AM') || ' - ' ||
-      to_char(v_shift_end,   'HH12:MI AM')
-  );
+  -- Rebuild the exact string the app stores in active_shifts, e.g.
+  -- "Saturday Breakfast - Sat, Aug 8 · 7:00 AM - 9:00 AM"  (Pacific time, no zero-padding).
+  v_desc := v_job || ' - ' ||
+            to_char(v_start at time zone 'America/Los_Angeles', 'Dy, Mon FMDD') || ' · ' ||
+            to_char(v_start at time zone 'America/Los_Angeles', 'FMHH12:MI AM') || ' - ' ||
+            to_char(v_end   at time zone 'America/Los_Angeles', 'FMHH12:MI AM');
 
-  -- 4️⃣ Insert pending hour entries for every signed‑up volunteer
-  for v_entry_id in
-    insert into public.hour_entries
-          (id, user_id, shift_id, hours, task, reason, status, created_at)
-    select
-        gen_random_uuid(),                     -- id
-        su.user_id,
-        p_shift_id,                            -- shift_id
-        v_hours,
-        coalesce(v_job_name,'General') as task,
-        'Completed shift: ' || coalesce(v_job_name,'General') as reason,
-        'pending' as status,
-        now() as created_at
+  -- One approved hour entry per signed-up volunteer (skip walk-ins with no account).
+  insert into public.hour_entries (user_id, shift_id, hours, task, reason, status, created_at, decided_at)
+  select su.user_id, p_shift_id, v_hours, v_job, 'Completed shift: ' || v_job, 'approved', now(), now()
     from public.signups su
-    where su.shift_id = p_shift_id
-      and su.status = 'signed_up'
-    returning id
-  loop
-    -- Note: we keep them as pending for now; we'll approve them in a batch below.
-    null; -- placeholder to keep loop syntax
-  end loop;
+   where su.shift_id = p_shift_id
+     and su.user_id is not null
+     and su.status in ('signed_up', 'attended');
 
-  -- 5️⃣ Approve all pending hour entries for this shift in one go
-  update public.hour_entries
-     set status = 'approved',
-         decided_at = now(),
-         decided_by = null   -- system‑awarded; you could set to a specific system userid if desired
-   where shift_id = p_shift_id
-     and status = 'pending';
-
-  -- 6️⃣ Add the awarded hours to each volunteer's total
+  -- Credit each volunteer's cached total by the shift duration.
   update public.user_info ui
-     set hours_volunteered = ui.hours_volunteered + sub.total_hours
-   from (
-         select he.user_id, sum(he.hours) as total_hours
-           from public.hour_entries he
-          where he.shift_id = p_shift_id
-            and he.status = 'approved'
-          group by he.user_id
-       ) sub
-   where ui.user_id = sub.user_id;
+     set hours_volunteered = coalesce(ui.hours_volunteered, 0) + v_hours
+   where ui.user_id in (
+     select su.user_id from public.signups su
+      where su.shift_id = p_shift_id and su.user_id is not null and su.status in ('signed_up', 'attended')
+   );
 
-  -- 7️⃣ Remove the shift description from each volunteer's active_shifts array
-  -- active_shifts is jsonb array of strings; convert to text[], remove, back to jsonb
-  update public.user_info
-     set active_shifts = coalesce(
-         (
-             select to_jsonb(
-                 array_remove(
-                     array_agg(elem),
-                     v_shift_desc
-                 )
-             )
-             from jsonb_array_elements_text(active_shifts) as elem
-         ),
-         '[]'::jsonb
-     )
-   where user_id in (
-         select user_id from public.signups where shift_id = p_shift_id
-       );
+  -- Remove the shift from each of those volunteers' active_shifts list.
+  update public.user_info ui
+     set active_shifts = coalesce((
+           select to_jsonb(array_remove(array_agg(elem), v_desc))
+             from jsonb_array_elements_text(ui.active_shifts) as elem
+         ), '[]'::jsonb)
+   where ui.active_shifts is not null
+     and ui.user_id in (
+       select su.user_id from public.signups su
+        where su.shift_id = p_shift_id and su.user_id is not null and su.status in ('signed_up', 'attended')
+     );
 
-  -- 8️⃣ Mark the shift as awarded
-  update public.shifts
-     set hours_awarded = true
-   where id = p_shift_id;
-
-  -- 9️⃣ (Optional) Fire a notification – you can call an edge function here
-  -- perform public.notify_hour_award(p_shift_id);
-exception
-  when others then
-    raise exception 'Failed to award hours for shift %: %', p_shift_id, sqlerrm;
+  update public.shifts set hours_awarded = true where id = p_shift_id;
 end;
 $$;
 
--- Grant execute rights
-grant execute on function public.award_hours_for_shift(p_shift_id uuid) to authenticated, anon;
-grant execute on function public.award_hours_for_shift(p_shift_id uuid) to service_role;
+grant execute on function public.award_hours_for_shift(uuid) to authenticated, service_role;

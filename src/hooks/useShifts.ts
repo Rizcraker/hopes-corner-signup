@@ -213,26 +213,13 @@ export function useShifts({ setErrorMessage }: UseShiftsDeps) {
     }
   }
 
-  /** Process any shifts that have ended but not yet awarded hours */
+  /**
+   * Refresh shift data so the UI reflects hours awarded server-side.
+   * Awarding itself is done by pg_cron (award_all_completed_shifts, migration 0013),
+   * not the client — that runs every minute regardless of who's online and avoids the
+   * RLS/permission issues of writing to other users' rows from the browser.
+   */
   const processExpiredShifts = async () => {
-    // Work with a snapshot of current shifts to avoid race conditions
-    const currentShifts = [...shifts]
-    const now = Date.now()
-    const expired = currentShifts.filter(
-      (s) => s.endDate.getTime() <= now && !s.hoursAwarded
-    )
-    if (expired.length === 0) return
-
-    for (const shift of expired) {
-      try {
-        await supabase.rpc('award_hours_for_shift', { shift_id: shift.id })
-        // After awarding, we expect hoursAwarded to be true; we'll refresh shifts to update UI
-      } catch (err) {
-        console.error(`Failed to award hours for shift ${shift.id}:`, err)
-        // Optionally surface error, but continue processing others
-      }
-    }
-    // Refresh shifts to reflect updated hoursAwarded status and any new data
     await fetchShifts()
   }
 

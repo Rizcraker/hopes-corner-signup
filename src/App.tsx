@@ -118,13 +118,17 @@ function App() {
     }
   }, [auth.userSession, setRedirected])
 
-  // Periodically process expired shifts to award hours and update UI
+  // Hours are awarded server-side by pg_cron every minute (award_all_completed_shifts).
+  // Here we just refresh the UI so a signed-in volunteer sees their credited hours and
+  // cleared upcoming shifts shortly after a shift ends.
   useEffect(() => {
+    if (!auth.userSession) return
     const handler = setInterval(() => {
-      shiftsApi.processExpiredShifts()
+      shiftsApi.fetchShifts()
+      userInfoApi.fetchUserInfo(auth.userSession)
     }, 60 * 1000) // every minute
     return () => clearInterval(handler)
-  }, [shiftsApi])
+  }, [shiftsApi, userInfoApi, auth.userSession])
 
   return (
     <div className="App">
