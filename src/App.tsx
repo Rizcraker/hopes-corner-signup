@@ -21,6 +21,7 @@ import NewsPage from './pages/NewsPage'
 import ContactPage from './pages/ContactPage'
 import AdminPage from './pages/AdminPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import VolunteerProfilePage from './pages/VolunteerProfilePage'
 
 function App() {
   const { pathname } = useLocation()
@@ -96,8 +97,8 @@ function App() {
     // 2. User is authenticated (has a session)
     // 3. Admin status has been loaded
     // 4. We haven't redirected yet
-    // Never bounce off the password-reset page — the recovery session must stay there.
-    if (pathname === '/reset-password') return
+    // Never bounce off the password-reset or email magic-link pages.
+    if (pathname === '/reset-password' || pathname === '/volunteer-profile') return
     if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected) {
       setRedirected(true)
       // Redirect based on admin status
@@ -165,6 +166,9 @@ function App() {
 
           {/* ================= PASSWORD RESET (from recovery email link) ================= */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* ================= VOLUNTEER PROFILE (from email magic link) ================= */}
+          <Route path="/volunteer-profile" element={<VolunteerProfilePage />} />
 
           {/* ================= ADMIN DASHBOARD (ACCESSIBLE ONLY TO ADMINS) ================= */}
           <Route

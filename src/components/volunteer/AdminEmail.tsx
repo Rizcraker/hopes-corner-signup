@@ -81,6 +81,13 @@ export default function AdminEmail() {
     return manual.split(/[\s,;]+/).map(s => s.trim()).filter(s => s.includes('@'))
   }, [mode, org, jobName, manual, vols])
 
+  // Replace text smart tags with a recipient's own values.
+  const applyTextTags = (text: string, v?: VolRow) => text
+    .replace(/\{first name\}/gi, v?.first_name ?? '')
+    .replace(/\{last name\}/gi, v?.last_name ?? '')
+    .replace(/\{email\}/gi, v?.email ?? '')
+    .replace(/\{organization name\}/gi, v?.organization ?? '')
+
   const applyTemplate = (id: string) => {
     setTemplateId(id)
     const t = templates.find(t => t.id === id)
@@ -114,35 +121,37 @@ export default function AdminEmail() {
 
     setIsSending(true)
     try {
+      const wantsProfileLink = /\{volunteer profile link\}/i.test(html)
       for (const recipientEmail of to) {
-        // Find volunteer by email
         const volunteer = vols.find(v => v.email === recipientEmail)
-        let modifiedHtml = html
-        if (volunteer && volunteer.user_id) {
-          // Generate token for this volunteer
-          const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
-            'generate-volunteer-token',
-            { body: { volunteer_id: volunteer.user_id } }
-          )
-          if (tokenError) {
-            console.error('Token generation error:', tokenError)
-            // If token fails, we'll send without replacement
-          } else if (tokenData && tokenData.token) {
-            const token = tokenData.token
-            const link = `${window.location.origin}/volunteer-profile?token=${token}`
-            // Replace placeholder with link
-            modifiedHtml = html.replace(
-              /\{volunteer profile link\}/g,
-              `<a href="${link}" style="color: var(--hc-primary); text-decoration: underline;">Volunteer Profile</a>`
+        // Text smart tags first (both subject and body get personalized).
+        let personalizedHtml = applyTextTags(html, volunteer)
+        const personalizedSubject = applyTextTags(subject, volunteer)
+
+        // Only mint a token if the tag is actually used (and we know the volunteer).
+        if (wantsProfileLink && volunteer?.user_id) {
+          try {
+            const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
+              'generate-volunteer-token',
+              { body: { volunteer_id: volunteer.user_id } }
             )
+            if (!tokenError && (tokenData as any)?.token) {
+              const link = `${window.location.origin}/volunteer-profile?token=${(tokenData as any).token}`
+              // Inline hex (email clients don't resolve CSS variables).
+              personalizedHtml = personalizedHtml.replace(
+                /\{volunteer profile link\}/gi,
+                `<a href="${link}" style="color:#22634d;text-decoration:underline;">View your profile</a>`
+              )
+            }
+          } catch (err) {
+            console.error('Token generation error:', err)
           }
         }
 
-        // Send email to this single recipient
         const res = await sendEmail({
           to: [recipientEmail],
-          subject,
-          html: modifiedHtml,
+          subject: personalizedSubject,
+          html: personalizedHtml,
           fromName,
           fromEmail
         })
@@ -214,8 +223,12 @@ export default function AdminEmail() {
 
       {/* Body */}
       <label className="email-label" style={{ display: 'block', marginTop: 8 }}>Message (HTML supported)</label>
+      <p className="field-hint" style={{ marginTop: 0 }}>
+        Smart tags (personalized per recipient): <code>{'{first name}'}</code> <code>{'{last name}'}</code>{' '}
+        <code>{'{email}'}</code> <code>{'{organization name}'}</code> <code>{'{volunteer profile link}'}</code>
+      </p>
       <textarea value={html} onChange={e => setHtml(e.target.value)} rows={10} className="email-body"
-        placeholder="<p>Hi {first name},</p><p>...</p>  — paste or type HTML here" />
+        placeholder="<p>Hi {first name},</p><p>View your profile: {volunteer profile link}</p>  — paste or type HTML here" />
       <details style={{ marginTop: 6 }}>
         <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--hc-text-muted)' }}>Preview</summary>
         <div className="email-preview" dangerouslySetInnerHTML={{ __html: html }} />
