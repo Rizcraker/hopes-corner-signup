@@ -21,6 +21,7 @@ import NewsPage from './pages/NewsPage'
 import ContactPage from './pages/ContactPage'
 import AdminPage from './pages/AdminPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import VolunteerLogin from './pages/VolunteerLogin'
 
 function App() {
   const { pathname } = useLocation()
@@ -147,6 +148,8 @@ function App() {
 
           {/* ================= VOLUNTEER PORTAL TAB ================= */}
           <Route path="/volunteer" element={<VolunteerPage auth={auth} userInfoApi={userInfoApi} shiftsApi={shiftsApi} />} />
+
+          <Route path="/volunteer-login" element={<VolunteerLogin />} />
 
           {/* ================= LEARN TAB ================= */}
           <Route path="/learn" element={<LearnPage />} />

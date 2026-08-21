@@ -129,7 +129,7 @@ export default function AdminEmail() {
             // If token fails, we'll send without replacement
           } else if (tokenData && tokenData.token) {
             const token = tokenData.token
-            const link = `${window.location.origin}/volunteer-profile?token=${token}`
+            const link = `${window.location.origin}/volunteer-login?token=${token}`
             // Replace placeholder with link
             modifiedHtml = html.replace(
               /\{volunteer profile link\}/g,

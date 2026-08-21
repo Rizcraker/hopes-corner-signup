@@ -122,6 +122,35 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Check for volunteer token login (sessionStorage)
+  useEffect(() => {
+    const volId = sessionStorage.getItem('hc_volunteer_id');
+    if (volId && !userSession) {
+      supabase
+        .from('user_info')
+        .select('*')
+        .eq('user_id', volId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const fakeSession = {
+              user: {
+                id: data.user_id,
+                user_metadata: {
+                  first_name: data.first_name,
+                  last_name: data.last_name,
+                  email: data.email,
+                }
+              }
+            };
+            setUserSession(fakeSession);
+            bridge.current.fetchShifts();
+            bridge.current.fetchUserInfo(fakeSession);
+          }
+        });
+    }
+  }, []); // run once
+
   // Admin status check whenever user session changes
   useEffect(() => {
     if (userSession?.user) {
@@ -241,6 +270,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     setUserSession(null)
+    // Clear volunteer login token
+    sessionStorage.removeItem('hc_volunteer_id')
     bridge.current.clearShifts()
     bridge.current.clearUserInfo()
     setInfoMessage(null)
