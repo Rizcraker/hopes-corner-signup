@@ -37,6 +37,7 @@ export default function AdminEmail() {
   const [newTemplateName, setNewTemplateName] = useState('')
   const [result, setResult] = useState<SendResult | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [isSending, setIsSending] = useState(false)
 
   useEffect(() => {
     fetchTemplates()
@@ -106,12 +107,58 @@ export default function AdminEmail() {
     if (to.length === 0) { setMsg('No recipients resolved.'); return }
     if (!subject.trim() || !html.trim()) { setMsg('Add a subject and message body.'); return }
     if (!confirm(`Send this email to ${to.length} recipient(s)?`)) return
+
+    // Track overall results
+    let totalSent = 0
+    let totalFailures: { recipient: string; error: string }[] = []
+
+    setIsSending(true)
     try {
-      const res = await sendEmail({ to, subject, html, fromName, fromEmail })
-      setResult(res)
-      setMsg(`Sent ${res.sent}/${res.total}.` + (res.failures.length ? ' Some failed — see below.' : ''))
+      for (const recipientEmail of to) {
+        // Find volunteer by email
+        const volunteer = vols.find(v => v.email === recipientEmail)
+        let modifiedHtml = html
+        if (volunteer && volunteer.user_id) {
+          // Generate token for this volunteer
+          const { data: tokenData, error: tokenError } = await supabase.functions.invoke(
+            'generate-volunteer-token',
+            { body: { volunteer_id: volunteer.user_id } }
+          )
+          if (tokenError) {
+            console.error('Token generation error:', tokenError)
+            // If token fails, we'll send without replacement
+          } else if (tokenData && tokenData.token) {
+            const token = tokenData.token
+            const link = `${window.location.origin}/volunteer-profile?token=${token}`
+            // Replace placeholder with link
+            modifiedHtml = html.replace(
+              /\{volunteer profile link\}/g,
+              `<a href="${link}" style="color: var(--hc-primary); text-decoration: underline;">Volunteer Profile</a>`
+            )
+          }
+        }
+
+        // Send email to this single recipient
+        const res = await sendEmail({
+          to: [recipientEmail],
+          subject,
+          html: modifiedHtml,
+          fromName,
+          fromEmail
+        })
+        totalSent += res.sent
+        totalFailures = [...totalFailures, ...res.failures]
+      }
+
+      setResult({ sent: totalSent, total: to.length, failures: totalFailures })
+      setMsg(
+        `Sent ${totalSent}/${to.length}.` +
+        (totalFailures.length ? ' Some failed — see below.' : '')
+      )
     } catch (e: any) {
-      setMsg('Send failed: ' + (e?.message ?? e) + ' (Is the send-email function deployed + RESEND_API_KEY set?)')
+      setMsg('Send failed: ' + (e?.message ?? e))
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -212,8 +259,8 @@ export default function AdminEmail() {
         {mode === 'job' && ' (from volunteers signed up for that job)'}.
       </p>
 
-      <button className="btn-primary" style={{ width: 'auto', marginTop: 8 }} onClick={onSend} disabled={sending}>
-        {sending ? 'Sending…' : `Send to ${recipients.length}`}
+      <button className="btn-primary" style={{ width: 'auto', marginTop: 8 }} onClick={onSend} disabled={isSending}>
+        {isSending ? 'Sending…' : `Send to ${recipients.length}`}
       </button>
 
       {result && result.failures.length > 0 && (
