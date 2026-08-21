@@ -16,7 +16,7 @@ interface AdminOption { email: string; name: string }
 type RecipientMode = 'all' | 'org' | 'job' | 'manual'
 
 export default function AdminEmail() {
-  const { templates, sending, fetchTemplates, saveTemplate, deleteTemplate, sendEmail } = useEmail()
+  const { templates, fetchTemplates, saveTemplate, deleteTemplate, sendEmail } = useEmail()
 
   const [admins, setAdmins] = useState<AdminOption[]>([])
   const [vols, setVols] = useState<VolRow[]>([])
