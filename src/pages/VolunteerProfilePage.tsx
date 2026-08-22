@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-// Magic-link landing page for the {volunteer profile link} smart tag in emails.
-// Reads ?token=… , exchanges it (server-side) for a read-only profile summary — no login.
+// Volunteer profile page for viewing read-only profile summaries.
+// Can be accessed directly or via internal links within the application.
 interface ProfileData {
   profile: {
     first_name: string | null

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, RefObject } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+import { useNavigate } from 'react-router-dom'
 import type { UserInfo } from '../types/userInfo'
 import { useGroups } from './useGroups'
 
@@ -15,6 +17,8 @@ export interface AuthDataBridge {
   clearUserInfo: () => void
   updateShiftSpotsLeft: (shiftId: string, change: number) => Promise<void>
   setUserInfo: (info: UserInfo | null) => void
+  setTokenLogin: (isTokenLogin: boolean) => void
+  setShifts: (shifts: Shift[]) => void
 }
 
 export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
@@ -34,6 +38,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   // Admin status
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
+  const navigate = useNavigate()
 
   // Registration flow state
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -116,6 +121,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
       } else {
         bridge.current.clearUserInfo()
         bridge.current.clearShifts()
+        bridge.current.setTokenLogin(false)
       }
     })
 
@@ -149,6 +155,91 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
           }
         });
     }
+  }, []); // run once
+
+  // Check for volunteer token login (URL parameter)
+  useEffect(() => {
+    // If we already have a session from normal auth or sessionStorage, don't override it
+    if (userSession) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (!token) return;
+
+    // Call the get-volunteer-data function to validate token and get volunteer data
+    supabase.functions.invoke('get-volunteer-data', { body: { token } })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Volunteer token error:', error);
+          return;
+        }
+
+        // Handle error in data (similar to VolunteerProfilePage)
+        if ((data as any)?.error) {
+          console.error('Volunteer token error:', (data as any).error);
+          return;
+        }
+
+        if (data.profile) {
+          const p = data.profile;
+          // Create fake session for auth purposes
+          const fakeSession = {
+            user: {
+              id: p.user_id,
+              user_metadata: {
+                first_name: p.first_name ?? '',
+                last_name: p.last_name ?? '',
+                email: p.email ?? '',
+                birthday: p.birthday || null,
+                age_range: p.age_range || null,
+                parent_email: p.parent_email || null,
+                phone_number: p.phone_number ?? '',
+                emergency_contact_name: p.emergency_contact_name ?? '',
+                emergency_contact_phone: p.emergency_contact_phone ?? '',
+                employer: p.employer ?? '',
+                street_address: p.street_address ?? '',
+                city: p.city ?? '',
+                zip_code: p.zip_code ?? '',
+                organization: p.organization ?? '',
+              }
+            }
+          };
+          setUserSession(fakeSession);
+
+          // Also populate userInfo store directly to avoid RLS issues with INSERT
+          const userInfoData: UserInfo = {
+            user_id: p.user_id,
+            hours_volunteered: p.hours_volunteered ?? 0,
+            active_shifts: Array.isArray(p.active_shifts) ? p.active_shifts : (typeof p.active_shifts === 'string' ? JSON.parse(p.active_shifts) : []),
+            first_name: p.first_name ?? '',
+            last_name: p.last_name ?? '',
+            birthday: p.birthday || null,
+            phone_number: p.phone_number ?? '',
+            emergency_contact_name: p.emergency_contact_name ?? '',
+            emergency_contact_phone: p.emergency_contact_phone ?? '',
+            employer: p.employer ?? '',
+            street_address: p.street_address ?? '',
+            city: p.city ?? '',
+            zip_code: p.zip_code ?? '',
+            organization: p.organization ?? '',
+            email: p.email ?? '',
+            age_range: p.age_range || null,
+            parent_email: p.parent_email || null,
+            // Optional fields with defaults
+            can_self_report: false,
+            first_volunteered_at: null
+          };
+
+          bridge.current.setUserInfo(userInfoData);
+          bridge.current.setShifts(p.shifts ?? []);
+          bridge.current.setTokenLogin(true);
+          // Clean up the URL by removing the token parameter
+          navigate('/volunteer', { replace: true });
+        }
+      })
+      .catch(err => {
+        console.error('Error invoking get-volunteer-data:', err);
+      });
   }, []); // run once
 
   // Admin status check whenever user session changes
@@ -274,6 +365,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     sessionStorage.removeItem('hc_volunteer_id')
     bridge.current.clearShifts()
     bridge.current.clearUserInfo()
+    // Reset token login state
+    bridge.current.setTokenLogin(false)
     setInfoMessage(null)
     setRegistrationStep(1)
     resetProfileFields()

@@ -136,7 +136,7 @@ export default function AdminEmail() {
               { body: { volunteer_id: volunteer.user_id } }
             )
             if (!tokenError && (tokenData as any)?.token) {
-              const link = `${window.location.origin}/volunteer-profile?token=${(tokenData as any).token}`
+              const link = `${window.location.origin}/volunteer?token=${(tokenData as any).token}`
               // Inline hex (email clients don't resolve CSS variables).
               personalizedHtml = personalizedHtml.replace(
                 /\{volunteer profile link\}/gi,

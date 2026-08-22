@@ -26,6 +26,9 @@ import VolunteerProfilePage from './pages/VolunteerProfilePage'
 function App() {
   const { pathname } = useLocation()
 
+  // Track if we're currently in token login mode (to prevent data fetching conflicts)
+  const [isTokenLogin, setIsTokenLogin] = useState(false)
+
   // Navigation tabs state
   const [communityTab, setCommunityTab] = useState<string>('stories')
   const [newsTab, setNewsTab] = useState<string>('press')
@@ -45,7 +48,9 @@ function App() {
     clearShifts: () => {},
     clearUserInfo: () => {},
     updateShiftSpotsLeft: async () => {},
-    setUserInfo: () => {}
+    setUserInfo: () => {},
+    setTokenLogin: () => {},
+    setShifts: () => {}
   })
   const auth = useVolunteerAuth(authBridgeRef)
 
@@ -76,9 +81,11 @@ function App() {
       clearShifts: shiftsApi.clearShifts,
       clearUserInfo: userInfoApi.clearUserInfo,
       updateShiftSpotsLeft: shiftsApi.updateShiftSpotsLeft,
-      setUserInfo: userInfoApi.setUserInfo
+      setUserInfo: userInfoApi.setUserInfo,
+      setTokenLogin: setIsTokenLogin,
+      setShifts: shiftsApi.setShifts
     }
-  }, [shiftsApi, userInfoApi])
+  }, [shiftsApi, userInfoApi, setIsTokenLogin])
 
   // Sync local state with the hooks' state
   useEffect(() => {
@@ -97,8 +104,10 @@ function App() {
     // 2. User is authenticated (has a session)
     // 3. Admin status has been loaded
     // 4. We haven't redirected yet
-    // Never bounce off the password-reset or email magic-link pages.
-    if (pathname === '/reset-password' || pathname === '/volunteer-profile') return
+    // Never bounce off the password-reset, volunteer magic-link, or volunteer token pages.
+    const urlParams = new URLSearchParams(window.location.search)
+    const hasVolunteerToken = urlParams.get('token') !== null
+    if (pathname === '/reset-password' || pathname === '/volunteer-profile' || (pathname === '/volunteer' && hasVolunteerToken)) return
     if (!auth.authLoading && auth.userSession && !auth.adminLoading && !redirected) {
       setRedirected(true)
       // Redirect based on admin status
@@ -122,14 +131,15 @@ function App() {
   // Hours are awarded server-side by pg_cron every minute (award_all_completed_shifts).
   // Here we just refresh the UI so a signed-in volunteer sees their credited hours and
   // cleared upcoming shifts shortly after a shift ends.
+  // Skip fetching when in token login mode to prevent overwriting directly-set data
   useEffect(() => {
-    if (!auth.userSession) return
+    if (!auth.userSession || isTokenLogin) return
     const handler = setInterval(() => {
       shiftsApi.fetchShifts()
       userInfoApi.fetchUserInfo(auth.userSession)
     }, 60 * 1000) // every minute
     return () => clearInterval(handler)
-  }, [shiftsApi, userInfoApi, auth.userSession])
+  }, [shiftsApi, userInfoApi, auth.userSession, isTokenLogin])
 
   return (
     <div className="App">

@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin
       .from('user_info')
-      .select('first_name, last_name, email, hours_volunteered, active_shifts, organization')
+      .select('user_id, first_name, last_name, email, hours_volunteered, active_shifts, organization, birthday, phone_number, emergency_contact_name, emergency_contact_phone, employer, street_address, city, zip_code, age_range, parent_email')
       .eq('user_id', volunteerId)
       .maybeSingle()
     if (!profile) return json({ error: 'Volunteer not found.' }, 404)
