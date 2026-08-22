@@ -22,14 +22,18 @@ export default function VolunteerProfilePage() {
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('token')
+    console.log('VolunteerProfilePage: token from URL:', token)
     if (!token) { setError('This link is missing its token.'); setLoading(false); return }
     ;(async () => {
       try {
+        console.log('VolunteerProfilePage: invoking get-volunteer-profile function')
         const { data, error } = await supabase.functions.invoke('get-volunteer-profile', { body: { token } })
+        console.log('VolunteerProfilePage: function result:', { data, error })
         if (error) throw error
         if ((data as any)?.error) throw new Error((data as any).error)
         setData(data as ProfileData)
       } catch (e: any) {
+        console.error('VolunteerProfilePage: error invoking function:', e)
         setError(e?.message || 'Could not load your profile. The link may have expired.')
       } finally {
         setLoading(false)
