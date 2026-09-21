@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, RefObject } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { createClient } from '@supabase/supabase-js'
 import { useNavigate } from 'react-router-dom'
 import type { UserInfo } from '../types/userInfo'
+import type { Shift } from '../types/shift'
 import { useGroups } from './useGroups'
 
 // The auth listener and sign-out have to drive the shifts / user-info hooks, but those hooks in
