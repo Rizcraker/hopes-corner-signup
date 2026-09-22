@@ -12,7 +12,7 @@ import { useGroups } from './useGroups'
 // handler) can run.
 export interface AuthDataBridge {
   fetchShifts: () => Promise<void>
-  fetchUserInfo: (session: any) => Promise<void>
+  fetchUserInfo: (session: any) => void
   clearShifts: () => void
   clearUserInfo: () => void
   updateShiftSpotsLeft: (shiftId: string, change: number) => Promise<void>
@@ -47,7 +47,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
   const [lastName, setLastName] = useState('');
   const [birthday, setBirthday] = useState('');        // optional now
   const [ageRange, setAgeRange] = useState('');         // operational eligibility field
-  const [parentEmail, setParentEmail] = useState('');   // linked parent/guardian (minors)
+  const [parentEmail, setParentEmail] = useState('');   // linked parent/guardian volunteer (minors)
   const [phoneNumber, setPhoneNumber] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
@@ -79,6 +79,9 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     setOrganization('');
     setCustomGroup('');
   };
+
+  // NEW: Flag to prevent auth listener interference during volunteer token processing
+  const [isProcessingVolunteerToken, setIsProcessingVolunteerToken] = useState(false);
 
   const checkAdminStatus = async (userId: string) => {
     setAdminLoading(true);
@@ -114,6 +117,9 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // SKIP PROCESSING IF WE'RE INTENTIONALLY SETTING UP A VOLUNTEER TOKEN SESSION
+      if (isProcessingVolunteerToken) return;
+
       setUserSession(session)
       if (session) {
         bridge.current.fetchShifts()
@@ -126,34 +132,46 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, []); // Consider adding isProcessingVolunteerToken to deps if needed
 
   // Check for volunteer token login (sessionStorage)
   useEffect(() => {
-    const volId = sessionStorage.getItem('hc_volunteer_id');
+    const volId = sessionStorage.getItem('hc_volunteer_id')
     if (volId && !userSession) {
+      // SET FLAG TO PREVENT AUTH LISTENER INTERFERENCE
+      setIsProcessingVolunteerToken(true)
+
       supabase
         .from('user_info')
         .select('*')
         .eq('user_id', volId)
         .single()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const fakeSession = {
-              user: {
-                id: data.user_id,
-                user_metadata: {
-                  first_name: data.first_name,
-                  last_name: data.last_name,
-                  email: data.email,
+        .then(
+          ({ data, error }) => {
+            if (!error && data) {
+              const fakeSession = {
+                user: {
+                  id: data.user_id,
+                  user_metadata: {
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                    email: data.email,
+                  }
                 }
-              }
-            };
-            setUserSession(fakeSession);
-            bridge.current.fetchShifts();
-            bridge.current.fetchUserInfo(fakeSession);
+              };
+              setUserSession(fakeSession);
+              bridge.current.fetchShifts();
+              bridge.current.fetchUserInfo(fakeSession);
+            }
+            // RESET FLAG AFTER A SHORT DELAY
+            setTimeout(() => setIsProcessingVolunteerToken(false), 1000)
+          },
+          err => {
+            console.error('Error fetching volunteer info from sessionStorage:', err)
+            // RESET FLAG ON ERROR TOO
+            setTimeout(() => setIsProcessingVolunteerToken(false), 1000)
           }
-        });
+        )
     }
   }, []); // run once
 
@@ -162,26 +180,26 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     // If we already have a session from normal auth or sessionStorage, don't override it
     if (userSession) return;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    if (!token) return;
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    if (!token) return
 
     // Call the get-volunteer-data function to validate token and get volunteer data
     supabase.functions.invoke('get-volunteer-data', { body: { token } })
       .then(({ data, error }) => {
         if (error) {
-          console.error('Volunteer token error:', error);
-          return;
+          console.error('Volunteer token error:', error)
+          return
         }
 
         // Handle error in data (similar to VolunteerProfilePage)
         if ((data as any)?.error) {
-          console.error('Volunteer token error:', (data as any).error);
-          return;
+          console.error('Volunteer token error:', (data as any).error)
+          return
         }
 
         if (data.profile) {
-          const p = data.profile;
+          const p = data.profile
           // Create fake session for auth purposes
           const fakeSession = {
             user: {
@@ -192,7 +210,7 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
                 email: p.email ?? '',
                 birthday: p.birthday || null,
                 age_range: p.age_range || null,
-                parent_email: p.parent_email || null,
+                parent_email: p.parent_email ?? null,
                 phone_number: p.phone_number ?? '',
                 emergency_contact_name: p.emergency_contact_name ?? '',
                 emergency_contact_phone: p.emergency_contact_phone ?? '',
@@ -204,7 +222,11 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
               }
             }
           };
-          setUserSession(fakeSession);
+
+          // SET FLAG TO PREVENT AUTH LISTENER INTERFERENCE
+          setIsProcessingVolunteerToken(true)
+
+          setUserSession(fakeSession)
 
           // Also populate userInfo store directly to avoid RLS issues with INSERT
           const userInfoData: UserInfo = {
@@ -223,8 +245,8 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
             zip_code: p.zip_code ?? '',
             organization: p.organization ?? '',
             email: p.email ?? '',
-            age_range: p.age_range || null,
-            parent_email: p.parent_email || null,
+            age_range: p.age_range ?? null,
+            parent_email: p.parent_email ?? null,
             // Optional fields with defaults
             can_self_report: false,
             first_volunteered_at: null
@@ -237,8 +259,14 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
           navigate('/volunteer', { replace: true });
         }
       })
+      // RESET FLAG AFTER A SHORT DELAY TO ALLOW LISTENER TO RESUME NORMAL OPERATION
+      .then(() => {
+        setTimeout(() => setIsProcessingVolunteerToken(false), 1000)
+      })
       .catch(err => {
-        console.error('Error invoking get-volunteer-data:', err);
+        console.error('Error invoking get-volunteer-data:', err)
+        // RESET FLAG ON ERROR TOO
+        setTimeout(() => setIsProcessingVolunteerToken(false), 1000)
       });
   }, []); // run once
 
@@ -335,78 +363,78 @@ export function useVolunteerAuth(bridge: RefObject<AuthDataBridge>) {
     }
   }
 
-  // Send a Supabase password-recovery email. The link lands on /reset-password,
-  // where the temporary recovery session lets the user set a new password.
-  const handleForgotPassword = async () => {
-    setErrorMessage(null)
-    setInfoMessage(null)
-    if (!email.trim()) {
-      setErrorMessage('Enter your email above first, then click "Forgot password?".')
-      return
+    // Send a Supabase password-recovery email. The link lands on /reset-password,
+    // where the temporary recovery session lets the user set a new password.
+    const handleForgotPassword = async () => {
+      setErrorMessage(null)
+      setInfoMessage(null)
+      if (!email.trim()) {
+        setErrorMessage('Enter your email above first, then click "Forgot password?".')
+        return
+      }
+      setAuthLoading(true)
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+        if (error) throw error
+        setInfoMessage('Password reset email sent. Check your inbox for the link.')
+      } catch (error: any) {
+        setErrorMessage(error.message || 'Could not send reset email.')
+      } finally {
+        setAuthLoading(false)
+      }
     }
-    setAuthLoading(true)
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
-      })
-      if (error) throw error
-      setInfoMessage('Password reset email sent. Check your inbox for the link.')
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Could not send reset email.')
-    } finally {
-      setAuthLoading(false)
+
+    const handleSignOut = async () => {
+      await supabase.auth.signOut()
+      setUserSession(null)
+      // Clear volunteer login token
+      sessionStorage.removeItem('hc_volunteer_id')
+      bridge.current.clearShifts()
+      bridge.current.clearUserInfo()
+      // Reset token login state
+      bridge.current.setTokenLogin(false)
+      setInfoMessage(null)
+      setRegistrationStep(1)
+      resetProfileFields()
+    }
+
+    const getUserName = () => {
+      return userSession?.user?.user_metadata?.first_name || userSession?.user?.email || 'Volunteer'
+    }
+
+    return {
+      isSignUp, setIsSignUp,
+      userSession,
+      email, setEmail,
+      firstName, setFirstName,
+      password, setPassword,
+      showPassword, setShowPassword,
+      authLoading,
+      errorMessage, setErrorMessage,
+      infoMessage, setInfoMessage,
+      registrationStep, setRegistrationStep,
+      lastName, setLastName,
+      birthday, setBirthday,
+      ageRange, setAgeRange,
+      parentEmail, setParentEmail,
+      phoneNumber, setPhoneNumber,
+      emergencyContactName, setEmergencyContactName,
+      emergencyContactPhone, setEmergencyContactPhone,
+      employer, setEmployer,
+      streetAddress, setStreetAddress,
+      city, setCity,
+      zipCode, setZipCode,
+      organization, setOrganization,
+      customGroup, setCustomGroup,
+      groupOptions,
+      resetProfileFields,
+      handleAuthSubmit,
+      handleForgotPassword,
+      handleSignOut,
+      getUserName,
+      isAdmin,
+      adminLoading,
     }
   }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    setUserSession(null)
-    // Clear volunteer login token
-    sessionStorage.removeItem('hc_volunteer_id')
-    bridge.current.clearShifts()
-    bridge.current.clearUserInfo()
-    // Reset token login state
-    bridge.current.setTokenLogin(false)
-    setInfoMessage(null)
-    setRegistrationStep(1)
-    resetProfileFields()
-  }
-
-  const getUserName = () => {
-    return userSession?.user?.user_metadata?.first_name || userSession?.user?.email || 'Volunteer'
-  }
-
-  return {
-    isSignUp, setIsSignUp,
-    userSession,
-    email, setEmail,
-    firstName, setFirstName,
-    password, setPassword,
-    showPassword, setShowPassword,
-    authLoading,
-    errorMessage, setErrorMessage,
-    infoMessage, setInfoMessage,
-    registrationStep, setRegistrationStep,
-    lastName, setLastName,
-    birthday, setBirthday,
-    ageRange, setAgeRange,
-    parentEmail, setParentEmail,
-    phoneNumber, setPhoneNumber,
-    emergencyContactName, setEmergencyContactName,
-    emergencyContactPhone, setEmergencyContactPhone,
-    employer, setEmployer,
-    streetAddress, setStreetAddress,
-    city, setCity,
-    zipCode, setZipCode,
-    organization, setOrganization,
-    customGroup, setCustomGroup,
-    groupOptions,
-    resetProfileFields,
-    handleAuthSubmit,
-    handleForgotPassword,
-    handleSignOut,
-    getUserName,
-    isAdmin,
-    adminLoading,
-  }
-}
